@@ -14,15 +14,18 @@ block content
         input(type='hidden', value=token, name='_csrf')
         p
             label A title for your essay:
-                input(type='text', name='title', placeholder='title')
+                if form.title
+                    input(type='text', name='title', placeholder='title', value=form.title)
+                else
+                    input(type='text', name='title', placeholder='title')
         p
             label A summary (html) for your essay:
             div
-                textarea(name='summary', rows=10, cols='80', placeholder='Summary goes here')
+                textarea(name='summary', rows=10, cols='80', placeholder='Summary goes here')=form.summary
         p
             label The content of your essay
             div
-                textarea(name='content', rows=10, cols='80', placeholder='Essay goes here')
+                textarea(name='content', rows=10, cols='80', placeholder='Essay goes here')=form.content
         p
             input(type='submit', value='write!')
 

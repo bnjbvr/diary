@@ -41,6 +41,8 @@ saveUserCred = (entity, cred) ->
         entity: entity
         mac_key: cred.mac_key
         mac_key_id: cred.mac_key_id
+        flash: []
+        form: {}
 
 ###
 # Returns a tent client corresponding to the given entity, or null
@@ -109,8 +111,6 @@ csrf = (req, res, next) ->
     res.locals.token = req.session._csrf
     next()
 
-flash = {}
-
 checkAuth = (req, res, next) ->
     entity = req.signedCookies.entity
     if entity and cacheEntities[entity]
@@ -122,27 +122,40 @@ app.get '/', csrf, checkAuth, (req, res) ->
     console.log 'Accessing /'
     entity = req.signedCookies.entity
     # if the user is authentified
+
+    users[entity] ?= {}
+    f = users[entity].form ?= {}
+    f.summary ?= ''
+    f.content ?= ''
+    f.title ?= ''
+
     res.render 'form',
-        flash: flash[entity] || []
-    flash[entity] = []
+        form: users[entity].form || {}
+        flash: users[entity].flash || []
+    users[entity].flash = []
 
 app.post '/new', checkAuth, (req, res) ->
     entity = req.signedCookies.entity
     client = cacheEntities[ entity ]
 
-    title = req.param 'title' || 'No title'
-    summary = req.param 'summary' || '<p>No summary<p>'
+    title = req.param 'title'
+    summary = req.param 'summary'
     content = req.param 'content'
 
     if not content or content.length == 0
-        flash[entity] ?= []
-        flash[entity].push 'Missing parameter: no content'
+
+        users[entity].form =
+            title: title
+            summary: summary
+
+        users[entity].flash.push 'Missing parameter: no content'
+
         res.redirect '/'
         return
 
     essay =
-        title: title
-        excerpt: summary
+        title: title || 'No title'
+        excerpt: summary || '<p>No summary<p>'
         body: content
     post =
         published_at: Math.floor( +new Date() / 1000 )
@@ -156,11 +169,10 @@ app.post '/new', checkAuth, (req, res) ->
     client.posts.create post, (err, enhanced) ->
         if err
             console.error 'error when creating post: ' + err
-            flash[entity] ?= []
-            flash[entity].push 'An error happened when creating post: ' + err
+            users[entity].flash.push 'An error happened when creating post: ' + err
         else
-            flash[entity] ?= []
-            flash[entity].push 'Creation of your essay successful.'
+            users[entity].flash.push 'Creation of your essay successful.'
+            users[entity].form = {}
 
         res.redirect '/'
 
