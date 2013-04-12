@@ -18,4 +18,5 @@ module.exports =
         scopes:
             write_posts: 'Writes essays on your behalf.'
             read_posts: 'Reads essays so as to be able to update them in the future.'
+        post_types: ['https://tent.io/types/post/essay/v0.1.0']
 
