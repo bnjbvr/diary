@@ -2,16 +2,33 @@ extends layout
 
 block content
     h1 Diary
-    a(href='/logout') Logout
+    p
+        a(href='/logout') Logout
 
     if flash
         p
             for f in flash
                 span #{f}
 
+    if essays && essays.length > 0
+        h3 Essays
+        ul
+        for e in essays
+            li
+                a(href='/edit/' + e.id)=e.content.title
+    else
+        p
+            a(href='/') back to main page
+
+    if form.update
+        h3 Deletion
+        a(href='/del/' + form.update) delete essay
+
     h3 New article
     form(action='/new', method='post')
         input(type='hidden', value=token, name='_csrf')
+        if form.update
+            input(type='hidden', value=form.update, name='update')
         p
             label A title for your essay:
                 if form.title

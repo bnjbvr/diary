@@ -121,18 +121,78 @@ checkAuth = (req, res, next) ->
 app.get '/', csrf, checkAuth, (req, res) ->
     console.log 'Accessing /'
     entity = req.signedCookies.entity
+    client = cacheEntities[ entity ]
     # if the user is authentified
 
-    users[entity] ?= {}
-    f = users[entity].form ?= {}
-    f.summary ?= ''
-    f.content ?= ''
-    f.title ?= ''
+    postsGetParams =
+        post_types: 'essay'
+        entity: entity
 
-    res.render 'form',
-        form: users[entity].form || {}
-        flash: users[entity].flash || []
-    users[entity].flash = []
+    client.posts.get postsGetParams, (err, essays) ->
+        if err
+            console.error 'error when fetching essays of ' + entity + ' :' + err
+            essays = []
+        else
+            users[entity] ?= {}
+            f = users[entity].form ?= {}
+            f.summary ?= ''
+            f.content ?= ''
+            f.title ?= ''
+
+            res.render 'form',
+                essays: essays
+                form: users[entity].form || {}
+                flash: users[entity].flash || []
+            users[entity].flash = []
+
+app.get '/edit/:id', csrf, checkAuth, (req, res) ->
+    entity = req.signedCookies.entity
+    client = cacheEntities[ entity ]
+    id = req.param 'id'
+
+    if not id
+        users[entity].flash.push 'No id when editing a post'
+        res.redirect '/'
+        return
+
+    client.posts.getById id, {}, (err, essay) ->
+        if err
+            console.error 'retrieve by id: ' + err
+            users[entity].flash.push 'Error when trying to retrieve post with id ' + id + ': ' + err
+            res.redirect '/'
+            return
+
+        e = essay
+        form =
+            title: e.content.title || ''
+            content: e.content.body || ''
+            summary: e.content.excerpt || ''
+            update: e.id
+
+        res.render 'form',
+            essays: []
+            form: form
+            flash: users[entity].flash || []
+        users[entity].flash = []
+
+app.get '/del/:id', csrf, checkAuth, (req, res) ->
+    entity = req.signedCookies.entity
+    client = cacheEntities[ entity ]
+    id = req.param 'id'
+
+    if not id
+        users[entity].flash.push 'no id when deleting an essay'
+        res.redirect '/'
+        return
+
+    client.posts.delete id, {}, (err) ->
+        if err
+            console.error 'deleting post ' + id + ': ' + err
+            users[entity].flash.push 'Error when deleting an essay: ' + err
+            res.redirect '/edit/' + id
+        else
+            users[entity].flash.push 'Deletion of essay was successful.'
+            res.redirect '/'
 
 app.post '/new', checkAuth, (req, res) ->
     entity = req.signedCookies.entity
@@ -157,6 +217,7 @@ app.post '/new', checkAuth, (req, res) ->
         title: title || 'No title'
         excerpt: summary || '<p>No summary<p>'
         body: content
+
     post =
         published_at: Math.floor( +new Date() / 1000 )
         mentions: []
@@ -166,16 +227,27 @@ app.post '/new', checkAuth, (req, res) ->
         permissions:
             public: true
 
-    client.posts.create post, (err, enhanced) ->
-        if err
-            console.error 'error when creating post: ' + err
-            users[entity].flash.push 'An error happened when creating post: ' + err
-        else
-            users[entity].flash.push 'Creation of your essay successful.'
-            users[entity].form = {}
+    updateId = req.param 'update'
+    if updateId
+        vbING = 'updating'
+        noun = 'Update'
+    else
+        vbING = 'creating'
+        noun = 'Creation'
 
+    cb = (err, enhanced) ->
+        if err
+            console.error 'error when ' + vbING + ' post: ' + err
+            users[entity].flash.push 'An error happened when ' + vbING + ' post: ' + err
+        else
+            users[entity].flash.push noun + ' of your essay successful.'
+            users[entity].form = {}
         res.redirect '/'
 
+    if updateId
+        client.posts.update updateId, post, cb
+    else
+        client.posts.create post, cb
 
 # Auth stuff
 app.post '/login', (req, res) ->
