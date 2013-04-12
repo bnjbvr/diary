@@ -1,5 +1,12 @@
+Makefile
+start.sh
+stop.sh
+.pid
+diary.log
+
+*.js
 config.coffee
 node_modules/
-app/
-user/
 tent.js/
+app/*.json
+user/*.json

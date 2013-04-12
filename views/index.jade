@@ -1,0 +1,10 @@
+extends layout
+
+block content
+    h1 Authenticate
+    form(method='post')
+        p
+            label Enter an entity
+                input(type='text', name='entity')
+        input(type='hidden', name='_csrf', value=token)
+        input(type='submit', value='send')
