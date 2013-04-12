@@ -105,65 +105,62 @@ csrf = (req, res, next) ->
 
 flash = {}
 
-app.get '/', csrf, (req, res) ->
-    # if user is authentified, 'entity' should be defined
-    console.log 'Accessing /'
+checkAuth = (req, res, next) ->
     entity = req.signedCookies.entity
     if entity and cacheEntities[entity]
-        # if the user is authentified
-        res.render 'form',
-            flash: flash[entity] || []
-        flash[entity] = []
+        next()
     else
-        # if the user is not authentified
-        res.render 'index'
+        res.redirect '/login'
 
-app.post '/new', (req, res) ->
+app.get '/', csrf, checkAuth, (req, res) ->
+    console.log 'Accessing /'
     entity = req.signedCookies.entity
-    if not entity
+    # if the user is authentified
+    res.render 'form',
+        flash: flash[entity] || []
+    flash[entity] = []
+
+app.post '/new', checkAuth, (req, res) ->
+    entity = req.signedCookies.entity
+    client = cacheEntities[ entity ]
+
+    title = req.param 'title' || 'No title'
+    summary = req.param 'summary' || '<p>No summary<p>'
+    content = req.param 'content'
+
+    if not content or content.length == 0
+        flash[entity] ?= []
+        flash[entity].push 'Missing parameter: no content'
         res.redirect '/'
-    else
-        client = cacheEntities[ entity ]
-        if not client
-            res.redirect '/logout'
+        return
 
-        title = req.param 'title' || 'Without title'
-        summary = req.param 'summary' || '<p>No summary<p>'
-        content = req.param 'content'
+    essay =
+        title: title
+        excerpt: summary
+        body: content
+    post =
+        published_at: Math.floor( +new Date() / 1000 )
+        mentions: []
 
-        if not content or content.length == 0
+        type: 'essay'
+        content: essay
+        permissions:
+            public: true
+
+    client.posts.create post, (err, enhanced) ->
+        if err
+            console.error 'error when creating post: ' + err
             flash[entity] ?= []
-            flash[entity].push 'Missing parameter: no content'
-            res.redirect '/'
-            return
+            flash[entity].push 'An error happened when creating post: ' + err
+        else
+            flash[entity] ?= []
+            flash[entity].push 'Creation of your essay successful.'
 
-        essay =
-            title: title
-            excerpt: summary
-            body: content
-        post =
-            published_at: Math.floor( +new Date() / 1000 )
-            mentions: []
-
-            type: 'essay'
-            content: essay
-            permissions:
-                public: true
-
-        client.posts.create post, (err, enhanced) ->
-            if err
-                console.error 'error when creating post: ' + err
-                flash[entity] ?= []
-                flash[entity].push 'An error happened when creating post: ' + err
-            else
-                flash[entity] ?= []
-                flash[entity].push 'Creation of your essay successful.'
-
-            res.redirect '/'
+        res.redirect '/'
 
 
 # Auth stuff
-app.post '/', (req, res) ->
+app.post '/login', (req, res) ->
     entity = req.param 'entity'
 
     if not entity
@@ -171,7 +168,7 @@ app.post '/', (req, res) ->
         return
 
     if not /^https?:\/\//ig.test entity
-        res.send "The URL you've entered doesn't have a scheme (http or https), please <a href='/'>retry</a>."
+        res.send "The URL you've entered doesn't have a scheme (http or https), please <a href='/login'>retry</a>."
         return
 
     client = retrieveTentClient entity
@@ -180,6 +177,7 @@ app.post '/', (req, res) ->
         console.log 'Registering: ' + entity
         client = new Tent entity
         client.app.register APP, (err, authUrl, appInfo) ->
+            console.log 'callback of client is called'
             if err
                 console.error err
                 res.send 500, 'Error when registering the app. Are you sure you entered correctly your tent URL?'
@@ -207,12 +205,12 @@ app.get '/cb', (req, res) ->
     if error
         console.error 'error when authenticating: ' + error
         if req.signedCookies.entity then res.clearCookie 'entity'
-        res.send 'There was an error during authentication. Please retry by clicking <a href="/">here</a>'
+        res.send 'There was an error during authentication. Please retry by clicking <a href="/login">here</a>'
         return
 
     entity = req.signedCookies.entity
     if not entity
-        res.send 'Error: no cookies. Please activate cookies for navigation on this site. Click <a href="/">here</a> to retry.'
+        res.send 'Error: no cookies. Please activate cookies for navigation on this site. Click <a href="/login">here</a> to retry.'
         return
 
     client = cacheEntities[ entity ]
@@ -227,7 +225,7 @@ app.get '/cb', (req, res) ->
             res.clearCookie 'entity'
             delete cacheEntities[entity]
 
-            res.send 500, 'Error when trading the auth code. Please retry <a href="/">here</a>.'
+            res.send 500, 'Error when trading the auth code. Please retry <a href="/login">here</a>.'
         else
             saveUserCred entity, comp
             res.redirect '/'
@@ -238,9 +236,10 @@ app.get '/logout', (req, res) ->
         res.clearCookie 'entity'
     if cacheEntities[entity]
         delete cacheEntities[entity]
-    res.redirect '/'
+    res.redirect '/login'
 
-
+app.get '/login', csrf, (req, res) ->
+    res.render 'login'
 
 server = http.createServer(app).listen app.get('port'), () ->
     console.log 'Express server listening on port ' + app.get 'port'
