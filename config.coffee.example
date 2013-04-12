@@ -1,4 +1,8 @@
 module.exports =
+    # Prod settings: in prod mode, auth requests are done.
+    # In dev mode (dev == !prod), auth are directly retrieved from files in app/ and user/
+    prod: true
+
     # The port on which you would like to run the webserver
     port: 1337
 

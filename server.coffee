@@ -1,6 +1,7 @@
 config = require './config'
 PORT = config.port
 APP = config.app
+PROD_MODE = config.prod
 Tent = require config.tentlib
 
 express = require 'express'
@@ -68,6 +69,11 @@ retrieveTentClient = (entity) ->
         console.error error
         null
 
+# for dev mode, don't authenticate but use user credentials file
+retrieveUserFile = (entity) ->
+    filename = cleanEntity entity
+    userCred = JSON.parse fs.readFileSync 'user/' + filename + '.json'
+    return userCred
 
 # cleans an entity name by removing http(s) and remaining slashes
 cleanEntity = (entity) ->
@@ -189,13 +195,19 @@ app.post '/login', (req, res) ->
     else
         # already reg
         console.log 'Authenticating: ' + entity
-        client.app.getAuthUrl (err, authUrl, appInfo) ->
-            if err
-                console.error err
-                res.send 500, 'Error when authenticating the user: ' + err
-            else
-                res.cookie 'entity', entity, {signed:true}
-                res.redirect authUrl
+        if PROD_MODE
+            client.app.getAuthUrl (err, authUrl, appInfo) ->
+                if err
+                    console.error err
+                    res.send 500, 'Error when authenticating the user: ' + err
+                else
+                    res.cookie 'entity', entity, {signed:true}
+                    res.redirect authUrl
+        else
+            userCred = retrieveUserFile entity
+            client.setUserCredentials userCred.mac_key, userCred.mac_key_id
+            res.cookie 'entity', entity, {signed:true}
+            res.redirect '/'
 
 app.get '/cb', (req, res) ->
     code = req.param 'code'
