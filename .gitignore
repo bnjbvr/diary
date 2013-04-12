@@ -1,0 +1,5 @@
+config.coffee
+node_modules/
+app/
+user/
+tent.js/
