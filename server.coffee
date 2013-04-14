@@ -217,8 +217,8 @@ app.post '/new', checkAuth, (req, res) ->
         return
 
     essay =
-        title: title || 'No title'
-        excerpt: summary || '<p>No summary<p>'
+        title: title || ''
+        excerpt: summary || ''
         body: content
 
     post =
