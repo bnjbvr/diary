@@ -56,14 +56,12 @@ saveUserCred = (entity, cred) ->
 ###
 retrieveTentClient = (entity) ->
     try
-        client = cacheEntities[ entity ]
-        if not client
-            filename = cleanEntity entity
-            appCred = fs.readFileSync 'app/' + filename + '.json', {encoding:'utf8'}
-            appCred = JSON.parse appCred
-            cacheEntities[entity] = client = new Tent entity
-            client.setAppCredentials appCred.mac_key, appCred.mac_key_id
-            client.app.setId appCred.id
+        filename = cleanEntity entity
+        appCred = fs.readFileSync 'app/' + filename + '.json', {encoding:'utf8'}
+        appCred = JSON.parse appCred
+        cacheEntities[entity] = client = new Tent entity
+        client.setAppCredentials appCred.mac_key, appCred.mac_key_id
+        client.app.setId appCred.id
 
         client
 
