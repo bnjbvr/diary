@@ -1,10 +1,17 @@
 extends layout
 
 block content
-    h1 Authenticate
-    form(method='post')
-        p
-            label Enter an entity
-                input(type='text', name='entity')
-        input(type='hidden', name='_csrf', value=token)
-        input(type='submit', value='send')
+    .container
+        .hero-unit
+            h1 Diary Beta
+            p Diary is a program that helps you creating, updating and deleting your essays on any tent server.
+            p It is currently in beta. If you encounter any error, please contact ^bnj.tent.is.
+
+        form(method='post')
+            fieldset
+                legend Authenticate
+                p
+                    label(for='entity') Enter your entity:
+                    input(type='text', id='entity', name='entity', placeholder='entity')
+                input(type='hidden', name='_csrf', value=token)
+                input(type='submit', value='Authenticate').btn

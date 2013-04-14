@@ -1,0 +1,11 @@
+extends layout
+
+block content
+    .container
+        .hero-unit
+            h1=essay.title
+            p
+                | !{essay.summary}
+        .row
+            | !{essay.content}
+

@@ -30,6 +30,10 @@ saveAppCred = (entity, appInfo) ->
 # additional information about the entity
 users = {}
 
+emptyFlash = ->
+    error: []
+    success: []
+
 ###
 # Saves user credentials. You can put anything you want there.
 # In this example, user credentials are saved into user/[entity-name].json
@@ -41,7 +45,7 @@ saveUserCred = (entity, cred) ->
         entity: entity
         mac_key: cred.mac_key
         mac_key_id: cred.mac_key_id
-        flash: []
+        flash: emptyFlash()
         form: {}
 
 ###
@@ -144,9 +148,13 @@ app.get '/', csrf, checkAuth, (req, res) ->
 
             res.render 'form',
                 essays: essays
-                form: users[entity].form || {}
-                flash: users[entity].flash || []
-            users[entity].flash = []
+                flash: users[entity].flash || emptyFlash()
+            users[entity].flash = emptyFlash()
+
+app.get '/new', csrf, checkAuth, (req, res) ->
+    res.render 'form',
+        flash: emptyFlash()
+        form: {}
 
 app.get '/edit/:id', csrf, checkAuth, (req, res) ->
     entity = req.signedCookies.entity
@@ -154,14 +162,14 @@ app.get '/edit/:id', csrf, checkAuth, (req, res) ->
     id = req.param 'id'
 
     if not id
-        users[entity].flash.push 'No id when editing a post'
+        users[entity].flash.error.push 'No id when editing a post'
         res.redirect '/'
         return
 
     client.posts.getById id, {}, (err, essay) ->
         if err
             console.error 'retrieve by id: ' + err
-            users[entity].flash.push 'Error when trying to retrieve post with id ' + id + ': ' + err
+            users[entity].flash.error.push 'Error when trying to retrieve post with id ' + id + ': ' + err
             res.redirect '/'
             return
 
@@ -175,8 +183,8 @@ app.get '/edit/:id', csrf, checkAuth, (req, res) ->
         res.render 'form',
             essays: []
             form: form
-            flash: users[entity].flash || []
-        users[entity].flash = []
+            flash: users[entity].flash || emptyFlash()
+        users[entity].flash = emptyFlash()
 
 app.get '/del/:id', csrf, checkAuth, (req, res) ->
     entity = req.signedCookies.entity
@@ -184,17 +192,17 @@ app.get '/del/:id', csrf, checkAuth, (req, res) ->
     id = req.param 'id'
 
     if not id
-        users[entity].flash.push 'no id when deleting an essay'
+        users[entity].flash.error.push 'no id when deleting an essay'
         res.redirect '/'
         return
 
     client.posts.delete id, {}, (err) ->
         if err
             console.error 'deleting post ' + id + ': ' + err
-            users[entity].flash.push 'Error when deleting an essay: ' + err
+            users[entity].flash.error.push 'Error when deleting an essay: ' + err
             res.redirect '/edit/' + id
         else
-            users[entity].flash.push 'Deletion of essay was successful.'
+            users[entity].flash.success.push 'Deletion of essay was successful.'
             res.redirect '/'
 
 app.post '/new', checkAuth, (req, res) ->
@@ -211,7 +219,7 @@ app.post '/new', checkAuth, (req, res) ->
             title: title
             summary: summary
 
-        users[entity].flash.push 'Missing parameter: no content'
+        users[entity].flash.error.push 'Missing parameter: no content'
 
         res.redirect '/'
         return
@@ -241,9 +249,9 @@ app.post '/new', checkAuth, (req, res) ->
     cb = (err, enhanced) ->
         if err
             console.error 'error when ' + vbING + ' post: ' + err
-            users[entity].flash.push 'An error happened when ' + vbING + ' post: ' + err
+            users[entity].flash.error.push 'An error happened when ' + vbING + ' post: ' + err
         else
-            users[entity].flash.push noun + ' of your essay successful.'
+            users[entity].flash.success.push noun + ' of your essay successful.'
             users[entity].form = {}
         res.redirect '/'
 
@@ -342,7 +350,8 @@ app.get '/logout', (req, res) ->
     res.redirect '/login'
 
 app.get '/login', csrf, (req, res) ->
-    res.render 'login'
+    res.render 'login',
+        flash: emptyFlash()
 
 server = http.createServer(app).listen app.get('port'), () ->
     console.log 'Express server listening on port ' + app.get 'port'

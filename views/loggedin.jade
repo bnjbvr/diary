@@ -1,0 +1,27 @@
+extends layout
+
+block content
+    .navbar.navbar-inverse
+        .navbar-inner
+            .container
+                a.brand Diary
+                .nav-collapse.collapse
+                    ul.nav
+                        li
+                            a(href='/') Home
+                        li
+                            a(href='/new') Create
+                        li.pull-right
+                            a(href='/logout') Logout
+    .container
+        .row
+            if flash
+                p
+                    for f in flash.success
+                        span.text-success #{f}
+                    for f in flash.error
+                        span.text-error #{f}
+
+        .row
+            block sub
+

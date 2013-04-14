@@ -1,0 +1,10 @@
+extends loggedin
+
+block sub
+    .page-header
+        h1 Essays
+
+    ul.unstyled
+    for e in essays
+        li
+            a(href='/edit/' + e.id)=e.content.title

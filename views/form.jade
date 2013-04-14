@@ -1,49 +1,54 @@
-extends layout
+extends loggedin
 
-block content
-    h1 Diary Beta
-    p If you encounter any error, please contact ^bnj.tent.is
-    p
-        a(href='/logout') Logout
-
-    if flash
-        p
-            for f in flash
-                span #{f}
-
-    if essays && essays.length > 0
-        h3 Essays
-        ul
-        for e in essays
-            li
-                a(href='/edit/' + e.id)=e.content.title
-    else
-        p
-            a(href='/') back to main page
+block sub
+    .page-header
+        h1 Essay
 
     if form.update
-        h3 Deletion
-        a(href='/del/' + form.update) delete essay
+        h3 Read link
+        a(href=form.readUrl)=form.title
 
-    h3 New article
+        h3 Deletion
+        a(href='/del/' + form.update).btn Delete
+        span  (be careful, no confirmation asked!)
+
+    h3 Form
     form(action='/new', method='post')
-        input(type='hidden', value=token, name='_csrf')
-        if form.update
-            input(type='hidden', value=form.update, name='update')
-        p
-            label A title for your essay:
-                if form.title
-                    input(type='text', name='title', placeholder='title', value=form.title)
-                else
-                    input(type='text', name='title', placeholder='title')
-        p
-            label A summary (html) for your essay:
-            div
-                textarea(name='summary', rows=10, cols='80', placeholder='Summary goes here')=form.summary
-        p
-            label The content of your essay
-            div
-                textarea(name='content', rows=10, cols='80', placeholder='Essay goes here')=form.content
-        p
-            input(type='submit', value='write!')
+        fieldset
+            legend Optional fields
+            input(type='hidden', value=token, name='_csrf')
+            if form.update
+                input(type='hidden', value=form.update, name='update')
+            p
+                label A title for your essay:
+                    if form.title
+                        input(type='text', name='title', placeholder='title', value=form.title)
+                    else
+                        input(type='text', name='title', placeholder='title')
+            p
+                label(for='summary') A summary (html) for your essay:
+                textarea(name='summary', id='summary', placeholder='Summary goes here', rows=5).field.span12=form.summary
+        fieldset
+            legend Required field
+            p
+                label(for='content') The content of your essay
+
+                textarea(name='content', id='content', placeholder='Essay goes here', rows=5).field.span12=form.content
+            p
+                input(type='submit', value='write!').btn
+
+    script(src='/js/markdown.js')
+    script
+        (function(namespace){
+            var _radioMd = $('#radioMd');
+            var _preview = $('#preview');
+            var _content = $('#content');
+            var mdConverter = new Markdown.Converter();
+
+            namespace.preview = function preview(val) {
+                if( _radioMd.attr['checked'] ) {
+                    _preview.html( mdConverter.makeHtml( content.val() ) );
+                }
+            }
+        })(this);
 
