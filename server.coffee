@@ -264,6 +264,10 @@ app.post '/login', (req, res) ->
         res.send "The URL you've entered doesn't have a scheme (http or https), please <a href='/login'>retry</a>."
         return
 
+    entity = entity.toLowerCase()
+    if entity[ entity.length-1 ] == '/'
+        entity = entity.slice 0, entity.length-1
+
     client = retrieveTentClient entity
     if not client
         # client not registered, register the app
