@@ -1,11 +1,11 @@
 extends layout
 
 block content
+    .hero-unit
+        h1=essay.title
+        p
+            | !{essay.summary}
     .container
-        .hero-unit
-            h1=essay.title
-            p
-                | !{essay.summary}
         .row
             | !{essay.content}
 
