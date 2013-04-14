@@ -8,6 +8,7 @@ express = require 'express'
 http = require 'http'           # http.createServer
 path = require 'path'           # path.join
 
+qs = require 'querystring'
 fs = require 'fs'
 
 ###
@@ -146,7 +147,7 @@ app.get '/', csrf, checkAuth, (req, res) ->
                     a.content.title ?= '(untitled)'
                     a
 
-            res.render 'form',
+            res.render 'all',
                 essays: essays
                 flash: users[entity].flash || emptyFlash()
             users[entity].flash = emptyFlash()
@@ -179,6 +180,7 @@ app.get '/edit/:id', csrf, checkAuth, (req, res) ->
             content: e.content.body || ''
             summary: e.content.excerpt || ''
             update: e.id
+            readUrl: '/read?user=' + qs.escape(entity) + '&id=' + qs.escape e.id
 
         res.render 'form',
             essays: []
@@ -204,6 +206,38 @@ app.get '/del/:id', csrf, checkAuth, (req, res) ->
         else
             users[entity].flash.success.push 'Deletion of essay was successful.'
             res.redirect '/'
+
+readers = {}
+stripScripts = (s) ->
+    s.replace /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ''
+
+app.get '/read', (req, res) ->
+    id = req.param 'id'
+    entity = req.param 'user'
+
+    if not id or not entity
+        res.send 'Missing parameter.'
+        return
+
+    entity = qs.unescape entity
+    if not /^https?:\/\//ig.test entity
+        res.send "The URL you've entered doesn't have a scheme (http or https)."
+        return
+
+    entity = entity.toLowerCase()
+    if entity[ entity.length-1 ] == '/'
+        entity = entity.slice 0, entity.length-1
+
+    readClient = readers[ entity ] || ( readers[entity] = new Tent entity )
+    readClient.posts.getById id, {}, (err, essay) ->
+        if err
+            res.send 'Error when retrieving post: ' + err
+        else
+            res.render 'read',
+                essay:
+                    title: essay.content.title
+                    summary: stripScripts essay.content.excerpt
+                    content: stripScripts essay.content.body
 
 app.post '/new', checkAuth, (req, res) ->
     entity = req.signedCookies.entity
