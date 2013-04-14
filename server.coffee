@@ -137,9 +137,10 @@ app.get '/', csrf, checkAuth, (req, res) ->
             f.content ?= ''
             f.title ?= ''
 
-            essays = essays.map (a) ->
-                a.content.title ?= '(untitled)'
-                a
+            if essays.map
+                essays = essays.map (a) ->
+                    a.content.title ?= '(untitled)'
+                    a
 
             res.render 'form',
                 essays: essays
