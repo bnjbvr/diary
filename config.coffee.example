@@ -6,17 +6,12 @@ module.exports =
     # The port on which you would like to run the webserver
     port: 1337
 
-    # The tent.js path (tent nodejs lib by github.com/benjbouv)
-    tentlib: './tent.js/lib/tent'
-
     # The app description (see tent.io/docs)
     app:
         name: 'Diary'
-        description: 'Essay writer app. Challenge by cacauu.tent.is, accepted by bnj.tent.is.'
         url: 'http://diary.benj.me'
-        redirect_uris: ['http://diary.benj.me/cb']
-        scopes:
-            write_posts: 'Writes essays on your behalf.'
-            read_posts: 'Reads essays so as to be able to update them in the future.'
-        post_types: ['https://tent.io/types/post/essay/v0.1.0']
+        redirect_uri: 'http://diary.benj.me/cb'
+        types:
+            write: ['https://tent.io/types/essay/v0']
+            read: ['https://tent.io/types/essay/v0']
 
