@@ -33,11 +33,9 @@ class User
                     return
 
                 meta = @saveMeta meta
-                console.log 'no meta: ' +meta
                 @tent = Tr.createClient meta, @credentials
                 cb null
         else
-            console.log 'we have meta: ' + @meta
             @tent = Tr.createClient @meta, @credentials
             cb null
 
@@ -152,7 +150,7 @@ exports.LoadRegisteredUser = (entity, cb) ->
             cb null, user
 
     catch error
-        console.log 'Users.LoadRegisteredUser: ' + error
+        console.log 'Users.LoadRegisteredUser warning: ' + error
         cb null, null
 
     true
