@@ -79,21 +79,21 @@ GetUser = (entity) ->
 #   cb -> function(maybeError, {url: 'http://entity.tent.com/auth/', state: '0147200001'})
 ###
 exports.Register = (entity, app, cb) ->
-    client = GetUser entity
+    user = GetUser entity
     Td entity, (maybeError, meta) =>
         if maybeError
             console.error 'Users.Register.discovery callback error: ' + maybeError
             cb 'Error on discovery: ' + maybeError
             return
 
-        meta = client.saveMeta meta
+        meta = user.saveMeta meta
         Ta.registerApp meta, app, (regError, appCred, appId) =>
             if regError
                 console.error 'Users.Register.registerApp callback error: ' + regError
                 cb 'Error on register: ' + regError
                 return
 
-            client.saveAppInfo
+            user.saveAppInfo
                 id: appId
                 cred: appCred
 

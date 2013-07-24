@@ -17,7 +17,7 @@ PROD_MODE = config.prod
 ESSAY_TYPE = 'https://tent.io/types/essay/v0#'
 
 # additional server side information about an entity / user
-users = {}
+sessions = {}
 
 emptyFlash = ->
     error: []
@@ -73,8 +73,8 @@ app.get '/', csrf, checkAuth, (req, res) ->
             console.error 'error when fetching essays of ' + entity + ' :' + err
             essays = []
         else
-            users[user.entity] ?= {}
-            f = users[user.entity].form ?= {}
+            sessions[user.entity] ?= {}
+            f = sessions[user.entity].form ?= {}
             f.summary ?= ''
             f.content ?= ''
             f.title ?= ''
@@ -89,8 +89,8 @@ app.get '/', csrf, checkAuth, (req, res) ->
 
         res.render 'all',
             essays: essays
-            flash: users[user.entity].flash || emptyFlash()
-        users[user.entity].flash = emptyFlash()
+            flash: sessions[user.entity].flash || emptyFlash()
+        sessions[user.entity].flash = emptyFlash()
 
     user.tent.query(cb).types(ESSAY_TYPE)
 
@@ -101,18 +101,18 @@ app.get '/new', csrf, checkAuth, (req, res) ->
 
 app.get '/edit/:id', csrf, checkAuth, (req, res) ->
     entity = req.signedCookies.entity
-    client = Users.Get entity
+    user = Users.Get entity
     id = req.param 'id'
 
     if not id
-        users[entity].flash.error.push 'No id when editing a post'
+        sessions[entity].flash.error.push 'No id when editing a post'
         res.redirect '/'
         return
 
-    client.tent.get id, (err, headers, essay) ->
+    user.tent.get id, (err, headers, essay) ->
         if err
             console.error 'retrieve by id: ' + err
-            users[entity].flash.error.push 'Error when trying to retrieve post with id ' + id + ': ' + err
+            sessions[entity].flash.error.push 'Error when trying to retrieve post with id ' + id + ': ' + err
             res.redirect '/'
             return
 
@@ -133,26 +133,26 @@ app.get '/edit/:id', csrf, checkAuth, (req, res) ->
         res.render 'form',
             essays: []
             form: form
-            flash: users[entity].flash || emptyFlash()
-        users[entity].flash = emptyFlash()
+            flash: sessions[entity].flash || emptyFlash()
+        sessions[entity].flash = emptyFlash()
 
 app.get '/del/:id', csrf, checkAuth, (req, res) ->
     entity = req.signedCookies.entity
-    client = Users.Get entity
+    user = Users.Get entity
     id = req.param 'id'
 
     if not id
-        users[entity].flash.error.push 'no id when deleting an essay'
+        sessions[entity].flash.error.push 'no id when deleting an essay'
         res.redirect '/'
         return
 
-    client.tent.delete id, (err) ->
+    user.tent.delete id, (err) ->
         if err
             console.error 'deleting post ' + id + ': ' + err
-            users[entity].flash.error.push 'Error when deleting an essay: ' + err
+            sessions[entity].flash.error.push 'Error when deleting an essay: ' + err
             res.redirect '/edit/' + id
         else
-            users[entity].flash.success.push 'Deletion of essay was successful.'
+            sessions[entity].flash.success.push 'Deletion of essay was successful.'
             res.redirect '/'
 
 stripScripts = (s) ->
@@ -193,7 +193,7 @@ app.get '/read', (req, res) ->
 
 app.post '/new', checkAuth, (req, res) ->
     entity = req.signedCookies.entity
-    client = Users.Get entity
+    user = Users.Get entity
 
     title = req.param 'title'
     summary = req.param 'summary'
@@ -201,11 +201,11 @@ app.post '/new', checkAuth, (req, res) ->
     isPrivate = !! req.param 'isPrivate'
 
     if not content or content.length == 0
-        users[entity].form =
+        sessions[entity].form =
             title: title
             summary: summary
 
-        users[entity].flash.error.push 'Missing parameter: no content'
+        sessions[entity].flash.error.push 'Missing parameter: no content'
         res.redirect '/'
         return
 
@@ -225,24 +225,24 @@ app.post '/new', checkAuth, (req, res) ->
     cb = (err) =>
         if err
             console.error 'error when ' + vbING + ' post: ' + err
-            users[entity].flash.error.push 'An error happened when ' + vbING + ' post: ' + err
+            sessions[entity].flash.error.push 'An error happened when ' + vbING + ' post: ' + err
         else
-            users[entity].flash.success.push noun + ' of your essay successful.'
-            users[entity].form = {}
+            sessions[entity].flash.success.push noun + ' of your essay successful.'
+            sessions[entity].form = {}
         res.redirect '/'
 
     if updateId
-        client.tent.get updateId, (err, h, body) ->
+        user.tent.get updateId, (err, h, body) ->
             if err
                 cb err
                 return
 
-            client.tent.update(updateId, body.post.version.id, cb)
+            user.tent.update(updateId, body.post.version.id, cb)
                 .type(ESSAY_TYPE)
                 .content(essay)
                 .permissions(!isPrivate)
     else
-        client.tent.create(ESSAY_TYPE, cb)
+        user.tent.create(ESSAY_TYPE, cb)
             .publishedAt( +new Date() )
             .content(essay)
             .permissions(!isPrivate)
@@ -278,8 +278,8 @@ app.post '/login', (req, res) ->
                     return
 
                 res.cookie 'entity', entity, {signed: true}
-                users[entity] ?= {}
-                users[entity].state = auth.state
+                sessions[entity] ?= {}
+                sessions[entity].state = auth.state
 
                 res.redirect auth.url
         else
@@ -289,8 +289,8 @@ app.post '/login', (req, res) ->
                 auth = Users.Identify entity
 
                 res.cookie 'entity', entity, {signed:true}
-                users[entity] ?= {}
-                users[entity].state = auth.state
+                sessions[entity] ?= {}
+                sessions[entity].state = auth.state
 
                 res.redirect auth.url
             else
@@ -300,7 +300,7 @@ app.post '/login', (req, res) ->
                         return
 
                     res.cookie 'entity', entity, {signed:true}
-                    users[entity] =
+                    sessions[entity] =
                         form: {}
                         flash: emptyFlash()
                     res.redirect '/'
@@ -321,12 +321,12 @@ app.get '/cb', (req, res) ->
         res.send 'Error: no cookies. Please activate cookies for navigation on this site. Click <a href="/login">here</a> to retry.'
         return
 
-    client = users[entity]
-    if not client
+    session = sessions[entity]
+    if not session
         res.send 400
         return
 
-    if state != client.state
+    if state != session.state
         res.send 400, 'Error: misleading state.'
         return
 
@@ -337,16 +337,16 @@ app.get '/cb', (req, res) ->
             delete cacheEntities[entity]
             res.send 500, 'Error when trading the auth code: ' + err + '. Please retry <a href="/login">here</a>.'
         else
-            client.form = {}
-            client.flash = emptyFlash()
+            session.form = {}
+            session.flash = emptyFlash()
             res.redirect '/'
 
 app.get '/logout', (req, res) ->
     entity = req.signedCookies.entity
     if entity
         res.clearCookie 'entity'
-    if users[entity]
-        delete users[entity]
+    if sessions[entity]
+        delete sessions[entity]
     Users.Logout entity
     res.redirect '/login'
 
