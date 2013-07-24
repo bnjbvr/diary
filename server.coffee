@@ -198,11 +198,17 @@ app.get '/edit/:id', csrf, checkAuth, (req, res) ->
             return
 
         e = essay.post
+
+        isPrivate = false
+        if e.permissions and e.permissions.public != undefined and not e.permissions.public
+            isPrivate = true
+
         form =
-            title: e.content.title || ''
+            title: e.content.title || '(untitled)'
             content: e.content.body || ''
             summary: e.content.excerpt || ''
             update: e.id
+            isPrivate: isPrivate
             readUrl: '/read?user=' + qs.escape(entity) + '&id=' + qs.escape e.id
 
         res.render 'form',
@@ -287,6 +293,7 @@ app.post '/new', checkAuth, (req, res) ->
     title = req.param 'title'
     summary = req.param 'summary'
     content = req.param 'content'
+    isPrivate = !! req.param 'isPrivate'
 
     if not content or content.length == 0
         users[entity].form =
@@ -330,12 +337,12 @@ app.post '/new', checkAuth, (req, res) ->
             tent.update(updateId, body.post.version.id, cb)
                 .type(ESSAY_TYPE)
                 .content(essay)
-                .permissions(true)
+                .permissions(!isPrivate)
     else
         tent.create(ESSAY_TYPE, cb)
             .publishedAt( +new Date() )
             .content(essay)
-            .permissions(true)
+            .permissions(!isPrivate)
 
 # Auth stuff
 app.post '/login', (req, res) ->

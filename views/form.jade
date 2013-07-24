@@ -28,6 +28,12 @@ block sub
             p
                 label(for='summary') A summary (html) for your essay:
                 textarea(name='summary', id='summary', placeholder='Summary goes here', rows=5).field.span12=form.summary
+            p
+                label Private
+                    if form.update && form.isPrivate
+                        input(type='checkbox', name='isPrivate', checked='checked')
+                    else
+                        input(type='checkbox', name='isPrivate')
         fieldset
             legend Required field
             p
