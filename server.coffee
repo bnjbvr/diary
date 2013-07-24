@@ -1,108 +1,27 @@
+# Imports
+express = require 'express'
+http    = require 'http'           # http.createServer
+path    = require 'path'           # path.join
+qs      = require 'querystring'
+
+Users           = require './users'
+PublicClient    = require './publicClient'
+
+# Config of the app
 config = require './config'
 PORT = config.port
 APP = config.app
 PROD_MODE = config.prod
 
+# Constants
 ESSAY_TYPE = 'https://tent.io/types/essay/v0#'
 
-Td = require 'tent-discover'
-Ta = require 'tent-auth'
-Tr = require 'tent-request'
-
-express = require 'express'
-http = require 'http'           # http.createServer
-path = require 'path'           # path.join
-
-qs = require 'querystring'
-fs = require 'fs'
-
-###
-# Map: < entity url, tent client >
-###
-cacheEntities = {}
-
-###
-# Saves app credentials. You can put anything you want there.
-# In this example, app credentials are saved into app/[entity-name].json
-###
-saveAppCred = (entity, client) ->
-    filename = cleanEntity entity
-    toSave = client.app
-    fs.writeFileSync 'app/' + filename + '.json', JSON.stringify toSave
-
-# additional information about the entity
+# additional server side information about an entity / user
 users = {}
 
 emptyFlash = ->
     error: []
     success: []
-
-###
-# Saves user credentials. You can put anything you want there.
-# In this example, user credentials are saved into user/[entity-name].json
-###
-saveUserCred = (entity, cred) ->
-    filename = cleanEntity entity
-    fs.writeFileSync 'user/' + filename + '.json', JSON.stringify cred
-    cacheEntities[entity].credentials = cred
-    users[entity] =
-        tent: Tr.createClient cacheEntities[entity].meta, cred
-        # server related
-        flash: emptyFlash()
-        form: {}
-
-###
-# Returns a tent client corresponding to the given entity, or null
-# if the entity hasn't registered before.
-#
-# The entity MUST have registered the app before, which means app credentials
-# for this entity should be findable.
-#
-# In this example, app credentials are looked upon in a file that should be contained in the app directory, with the
-# form [entity-name].json
-###
-retrieveTentClient = (entity, cb) ->
-    try
-        filename = cleanEntity entity
-        appCred = fs.readFileSync 'app/' + filename + '.json', {encoding:'utf8'}
-        appCred = JSON.parse appCred
-
-        cacheEntities[entity] = client = {}
-        client.app = appCred
-        Td entity, (maybeError, meta) =>
-            if maybeError
-                cb maybeError, null
-                return
-            client.meta = meta.post.content
-            cb null, client
-
-    catch error
-        cb null, null
-
-    true
-
-# for dev mode, don't authenticate but use user credentials file
-retrieveUserFile = (entity) ->
-    filename = cleanEntity entity
-    userCred = JSON.parse fs.readFileSync 'user/' + filename + '.json'
-
-    if not cacheEntities[entity] or not cacheEntities[entity].meta
-        throw 'retrieveUserFile: No meta found for ' + entity
-        return
-
-    cacheEntities[entity].credentials = userCred
-    users[entity] =
-        tent: Tr.createClient cacheEntities[entity].meta, userCred
-        # server related
-        flash: emptyFlash()
-        form: {}
-    true
-
-# cleans an entity name by removing http(s) and remaining slashes
-cleanEntity = (entity) ->
-    cleaned = entity.replace /http(s)?:\/\//ig, ''
-    cleaned = cleaned.replace /\//g, ''
-    return cleaned
 
 ###
 # Creation of the server, using expressjs.
@@ -134,7 +53,7 @@ csrf = (req, res, next) ->
 
 checkAuth = (req, res, next) ->
     entity = req.signedCookies.entity
-    if entity and cacheEntities[entity]
+    if entity and Users.IsAuthenticated(entity)
         next()
     else
         res.redirect '/login'
@@ -142,20 +61,20 @@ checkAuth = (req, res, next) ->
 app.get '/', csrf, checkAuth, (req, res) ->
     console.log 'Accessing /'
     entity = req.signedCookies.entity
-    client = cacheEntities[ entity ]
-    # if the user is authentified
+
+    user = Users.Get entity
+    if not user
+        console.error 'get: no valid user entry for ' + entity
+        res.send 500, 'get: internal error'
+        return
 
     cb = (err, headers, body) =>
         if err
             console.error 'error when fetching essays of ' + entity + ' :' + err
             essays = []
         else
-            if not users[entity]
-                console.error 'get: no users.entity for ' + entity
-                res.send 500, 'get: internal error'
-                return
-
-            f = users[entity].form ?= {}
+            users[user.entity] ?= {}
+            f = users[user.entity].form ?= {}
             f.summary ?= ''
             f.content ?= ''
             f.title ?= ''
@@ -170,10 +89,10 @@ app.get '/', csrf, checkAuth, (req, res) ->
 
         res.render 'all',
             essays: essays
-            flash: users[entity].flash || emptyFlash()
-        users[entity].flash = emptyFlash()
+            flash: users[user.entity].flash || emptyFlash()
+        users[user.entity].flash = emptyFlash()
 
-    users[entity].tent.query(cb).types(ESSAY_TYPE)
+    user.tent.query(cb).types(ESSAY_TYPE)
 
 app.get '/new', csrf, checkAuth, (req, res) ->
     res.render 'form',
@@ -182,7 +101,7 @@ app.get '/new', csrf, checkAuth, (req, res) ->
 
 app.get '/edit/:id', csrf, checkAuth, (req, res) ->
     entity = req.signedCookies.entity
-    client = users[ entity ]
+    client = Users.Get entity
     id = req.param 'id'
 
     if not id
@@ -219,7 +138,7 @@ app.get '/edit/:id', csrf, checkAuth, (req, res) ->
 
 app.get '/del/:id', csrf, checkAuth, (req, res) ->
     entity = req.signedCookies.entity
-    client = users[ entity ]
+    client = Users.Get entity
     id = req.param 'id'
 
     if not id
@@ -236,7 +155,6 @@ app.get '/del/:id', csrf, checkAuth, (req, res) ->
             users[entity].flash.success.push 'Deletion of essay was successful.'
             res.redirect '/'
 
-readers = {}
 stripScripts = (s) ->
     s.replace /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ''
 
@@ -257,27 +175,14 @@ app.get '/read', (req, res) ->
     if entity[ entity.length-1 ] == '/'
         entity = entity.slice 0, entity.length-1
 
-    makePublicClient = (cb) ->
-        if readers[entity]
-            cb null, readers[entity]
-            return
-        Td entity, (maybeErr, meta) ->
-            if maybeErr
-                cb maybeErr
-                return
-            readers[entity] = Tr.createClient meta.post.content
-            cb null, readers[entity]
-        true
-
-    makePublicClient (err, client) ->
+    PublicClient.Get entity, (err, tent) ->
         if err
-            res.send 'Error when creating client for ' + entity
-            console.error 'Error when creating client for ' + entity + ': ' + err
+            res.send 500, 'Error when creating the public client: ' + err
             return
-        client.get id, (err2, headers, body) ->
+        tent.get id, (err2, headers, body) ->
             if err2
-                res.send 'Error when retrieving post: ' + err2
-                console.error 'Error when retrieving post: ' + err2
+                res.send 500, 'Error when retrieving public post: ' + err2
+                console.error 'Error when retrieving public post: ' + err2
             else
                 essay = body.post
                 res.render 'read',
@@ -288,7 +193,7 @@ app.get '/read', (req, res) ->
 
 app.post '/new', checkAuth, (req, res) ->
     entity = req.signedCookies.entity
-    client = cacheEntities[ entity ]
+    client = Users.Get entity
 
     title = req.param 'title'
     summary = req.param 'summary'
@@ -309,8 +214,6 @@ app.post '/new', checkAuth, (req, res) ->
         excerpt: summary || ''
         body: content
 
-    tent = users[entity].tent
-
     updateId = req.param 'update'
     if updateId
         vbING = 'updating'
@@ -329,17 +232,17 @@ app.post '/new', checkAuth, (req, res) ->
         res.redirect '/'
 
     if updateId
-        tent.get updateId, (err, h, body) ->
+        client.tent.get updateId, (err, h, body) ->
             if err
                 cb err
                 return
 
-            tent.update(updateId, body.post.version.id, cb)
+            client.tent.update(updateId, body.post.version.id, cb)
                 .type(ESSAY_TYPE)
                 .content(essay)
                 .permissions(!isPrivate)
     else
-        tent.create(ESSAY_TYPE, cb)
+        client.tent.create(ESSAY_TYPE, cb)
             .publishedAt( +new Date() )
             .content(essay)
             .permissions(!isPrivate)
@@ -360,50 +263,47 @@ app.post '/login', (req, res) ->
     if entity[ entity.length-1 ] == '/'
         entity = entity.slice 0, entity.length-1
 
-    retrieveTentClient entity, (err, client) =>
+    Users.LoadRegisteredUser entity, (err, user) =>
         if err
-            console.error err
+            console.error 'Server.Login: ' + err
             res.send 500, 'Internal error when retrieving client.'
             return
 
-        if not client
+        if not user
             # client not registered, register the app
             console.log 'Registering: ' + entity
-            client = {}
-            Td entity, (maybeError, meta) =>
+            Users.Register entity, config.app, (maybeError, auth) =>
                 if maybeError
-                    console.error maybeError
-                    res.send 500, 'Error on discovery: ' + maybeError
+                    res.send 500, maybeError
                     return
 
-                meta = client.meta = meta.post.content
-                Ta.registerApp meta, config.app, (regError, appCred, appId) =>
-                    if regError
-                        console.error regError
-                        res.send 500, 'Error on register: ' + regError
-                        return
+                res.cookie 'entity', entity, {signed: true}
+                users[entity] ?= {}
+                users[entity].state = auth.state
 
-                    client.app =
-                        id: appId
-                        cred: appCred
-
-                    client.auth = Ta.generateURL meta, appId
-
-                    saveAppCred entity, client
-                    cacheEntities[entity] = client
-                    res.cookie 'entity', entity, {signed: true}
-                    res.redirect client.auth.url
+                res.redirect auth.url
         else
             # already reg
             console.log 'Authenticating: ' + entity
             if PROD_MODE
-                client.auth = Ta.generateURL client.meta, client.app.id
+                auth = Users.Identify entity
+
                 res.cookie 'entity', entity, {signed:true}
-                res.redirect client.auth.url
+                users[entity] ?= {}
+                users[entity].state = auth.state
+
+                res.redirect auth.url
             else
-                userCred = retrieveUserFile entity
-                res.cookie 'entity', entity, {signed:true}
-                res.redirect '/'
+                userCred = Users.LoadUserCredentials entity, (err) =>
+                    if err
+                        res.send 500, err
+                        return
+
+                    res.cookie 'entity', entity, {signed:true}
+                    users[entity] =
+                        form: {}
+                        flash: emptyFlash()
+                    res.redirect '/'
 
 app.get '/cb', (req, res) ->
     code = req.param 'code'
@@ -421,33 +321,33 @@ app.get '/cb', (req, res) ->
         res.send 'Error: no cookies. Please activate cookies for navigation on this site. Click <a href="/login">here</a> to retry.'
         return
 
-    client = cacheEntities[ entity ]
+    client = users[entity]
     if not client
         res.send 400
         return
 
-    if state != client.auth.state
+    if state != client.state
         res.send 400, 'Error: misleading state.'
         return
 
-    Ta.tradeCode client.meta, client.app.cred, code, (err, userCred) =>
+    Users.TradeCode entity, code, (err) =>
         if err
             console.error err
             res.clearCookie 'entity'
             delete cacheEntities[entity]
             res.send 500, 'Error when trading the auth code: ' + err + '. Please retry <a href="/login">here</a>.'
         else
-            saveUserCred entity, userCred
+            client.form = {}
+            client.flash = emptyFlash()
             res.redirect '/'
 
 app.get '/logout', (req, res) ->
     entity = req.signedCookies.entity
     if entity
         res.clearCookie 'entity'
-    if cacheEntities[entity]
-        delete cacheEntities[entity]
     if users[entity]
         delete users[entity]
+    Users.Logout entity
     res.redirect '/login'
 
 app.get '/login', csrf, (req, res) ->
