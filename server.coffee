@@ -5,7 +5,7 @@ path    = require 'path'           # path.join
 qs      = require 'querystring'
 
 Users           = require './users'
-PublicClient    = require './publicClient'
+PublicClient    = require './public-client'
 
 # Config of the app
 config = require './config'
