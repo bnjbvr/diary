@@ -59,6 +59,7 @@ class User
 # Cleans an entity name by removing http(s) and remaining slashes
 CleanEntity = (entity) ->
     cleaned = entity.replace /http(s)?:\/\//ig, ''
+    cleaned = cleaned.replace /:/g, '-'
     cleaned = cleaned.replace /\//g, ''
     return cleaned
 
