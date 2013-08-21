@@ -5,6 +5,7 @@ path    = require 'path'           # path.join
 qs      = require 'querystring'
 
 Users           = require './users'
+Backend         = require './backend'
 PublicClient    = require './public-client'
 
 # Config of the app
@@ -18,6 +19,34 @@ ESSAY_TYPE = 'https://tent.io/types/essay/v0#'
 
 # additional server side information about an entity / user
 sessions = {}
+
+retrieveSession = (user) ->
+    s = sessions[user.entity] ?= {}
+    s.flash ?= emptyFlash()
+    s
+
+cleanSession = (user) ->
+    s = retrieveSession user
+    s.form =
+        summary: ''
+        content: ''
+        title: ''
+    s
+
+pushErrorSession = (user, err) ->
+    s = retrieveSession user
+    s.flash.error.push err
+    s
+
+pushSuccessSession = (user, msg) ->
+    s = retrieveSession user
+    s.flash.success.push msg
+    s
+
+emptyFlashSession = (user) ->
+    s = retrieveSession user
+    s.flash = emptyFlash()
+    s
 
 emptyFlash = ->
     error: []
@@ -58,6 +87,7 @@ checkAuth = (req, res, next) ->
     else
         res.redirect '/login'
 
+# Get all route
 app.get '/', csrf, checkAuth, (req, res) ->
     console.log 'Accessing /'
     entity = req.signedCookies.entity
@@ -65,65 +95,56 @@ app.get '/', csrf, checkAuth, (req, res) ->
     user = Users.Get entity
     if not user
         console.error 'get: no valid user entry for ' + entity
-        res.send 500, 'get: internal error'
+        res.send 500, 'internal error'
         return
 
-    cb = (err, headers, body) =>
+    Backend.GetEssays user, (err, essays) =>
         if err
-            console.error 'error when fetching essays of ' + entity + ' :' + err
-            essays = []
-        else
-            sessions[user.entity] ?= {}
-            f = sessions[user.entity].form ?= {}
-            f.summary ?= ''
-            f.content ?= ''
-            f.title ?= ''
+            res.send 500, err
+            return
 
-            essays = body.posts
-
-        if essays.map
-            essays = essays.map (a) ->
-                if not a.content or not a.content.title or a.content.title.length == 0
-                    a.content.title = '(untitled)'
-                a
-
+        cleanSession user
         res.render 'all',
             essays: essays
-            flash: sessions[user.entity].flash || emptyFlash()
-        sessions[user.entity].flash = emptyFlash()
+            flash: retrieveSession(user).flash
+        emptyFlashSession user
 
-    user.tent.query(cb).types(ESSAY_TYPE)
-
+# Print new post form
 app.get '/new', csrf, checkAuth, (req, res) ->
-    res.render 'form',
-        flash: emptyFlash()
-        form: {}
+    user = Users.Get req.signedCookies.entity
+    if not user
+        console.error '/new: no valid user entry for ' + user.entity
+        res.send 500, 'internal error'
+        return
 
+    s = cleanSession user
+    res.render 'form',
+        form: s.form
+        flash: s.flash
+
+# Print edit post form
 app.get '/edit/:id', csrf, checkAuth, (req, res) ->
     entity = req.signedCookies.entity
     user = Users.Get entity
     id = req.param 'id'
 
     if not id
-        sessions[entity].flash.error.push 'No id when editing a post'
+        pushErrorSession user, 'No id when editing a post'
         res.redirect '/'
         return
 
-    user.tent.get id, (err, headers, essay) ->
+    Backend.GetEssayById user, id, (err, e) ->
         if err
-            console.error 'retrieve by id: ' + err
-            sessions[entity].flash.error.push 'Error when trying to retrieve post with id ' + id + ': ' + err
+            pushErrorSession user, 'Error when trying to retrieve post with id ' + id + ': ' + err
             res.redirect '/'
             return
-
-        e = essay.post
 
         isPrivate = false
         if e.permissions and e.permissions.public != undefined and not e.permissions.public
             isPrivate = true
 
         form =
-            title: e.content.title || '(untitled)'
+            title: e.content.title || ''
             content: e.content.body || ''
             summary: e.content.excerpt || ''
             update: e.id
@@ -131,30 +152,30 @@ app.get '/edit/:id', csrf, checkAuth, (req, res) ->
             readUrl: '/read?user=' + qs.escape(entity) + '&id=' + qs.escape e.id
 
         res.render 'form',
-            essays: []
             form: form
-            flash: sessions[entity].flash || emptyFlash()
-        sessions[entity].flash = emptyFlash()
+            flash: retrieveSession(user).flash
+        emptyFlashSession user
 
+# Delete post by id
 app.get '/del/:id', csrf, checkAuth, (req, res) ->
     entity = req.signedCookies.entity
     user = Users.Get entity
     id = req.param 'id'
 
     if not id
-        sessions[entity].flash.error.push 'no id when deleting an essay'
+        pushErrorSession 'no id when deleting an essay'
         res.redirect '/'
         return
 
-    user.tent.delete id, (err) ->
+    Backend.DeleteEssayById user, id, (err) ->
         if err
-            console.error 'deleting post ' + id + ': ' + err
-            sessions[entity].flash.error.push 'Error when deleting an essay: ' + err
+            pushErrorSession user, err
             res.redirect '/edit/' + id
         else
-            sessions[entity].flash.success.push 'Deletion of essay was successful.'
+            pushSuccessSession user, 'Deletion of essay was successful.'
             res.redirect '/'
 
+# Reader
 stripScripts = (s) ->
     s.replace /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ''
 
@@ -163,12 +184,12 @@ app.get '/read', (req, res) ->
     entity = req.param 'user'
 
     if not id or not entity
-        res.send 'Missing parameter.'
+        res.send 500, 'Missing parameter.'
         return
 
     entity = qs.unescape entity
     if not /^https?:\/\//ig.test entity
-        res.send "The URL you've entered doesn't have a scheme (http or https)."
+        res.send 500, "The entity URL you've entered doesn't have a scheme (http or https)."
         return
 
     entity = entity.toLowerCase()
@@ -179,18 +200,19 @@ app.get '/read', (req, res) ->
         if err
             res.send 500, 'Error when creating the public client: ' + err
             return
-        tent.get id, (err2, headers, body) ->
+
+        Backend.GetEssayById {tent:tent}, id, (err2, essay) ->
             if err2
                 res.send 500, 'Error when retrieving public post: ' + err2
-                console.error 'Error when retrieving public post: ' + err2
-            else
-                essay = body.post
-                res.render 'read',
-                    essay:
-                        title: essay.content.title
-                        summary: stripScripts essay.content.excerpt
-                        content: stripScripts essay.content.body
+                return
 
+            res.render 'read',
+                essay:
+                    title: essay.content.title
+                    summary: stripScripts essay.content.excerpt
+                    content: stripScripts essay.content.body
+
+# New essay
 app.post '/new', checkAuth, (req, res) ->
     entity = req.signedCookies.entity
     user = Users.Get entity
@@ -201,11 +223,11 @@ app.post '/new', checkAuth, (req, res) ->
     isPrivate = !! req.param 'isPrivate'
 
     if not content or content.length == 0
-        sessions[entity].form =
+        retrieveSession(user).form =
             title: title
             summary: summary
 
-        sessions[entity].flash.error.push 'Missing parameter: no content'
+        pushErrorMessage user, 'Missing parameter: no content'
         res.redirect '/'
         return
 
@@ -224,28 +246,17 @@ app.post '/new', checkAuth, (req, res) ->
 
     cb = (err) =>
         if err
-            console.error 'error when ' + vbING + ' post: ' + err
-            sessions[entity].flash.error.push 'An error happened when ' + vbING + ' post: ' + err
+            pushErrorSession user, 'An error happened when ' + vbING + ' post: ' + err
         else
-            sessions[entity].flash.success.push noun + ' of your essay successful.'
-            sessions[entity].form = {}
+            pushSuccessSession user, noun + ' of your essay successful.'
+            retrieveSession(user).form = {}
         res.redirect '/'
 
     if updateId
-        user.tent.get updateId, (err, h, body) ->
-            if err
-                cb err
-                return
-
-            user.tent.update(updateId, body.post.version.id, cb)
-                .type(ESSAY_TYPE)
-                .content(essay)
-                .permissions(!isPrivate)
+        Backend.UpdateEssay user, updateId, essay, isPrivate, cb
     else
-        user.tent.create(ESSAY_TYPE, cb)
-            .publishedAt( +new Date() )
-            .content(essay)
-            .permissions(!isPrivate)
+        Backend.CreateEssay user, essay, isPrivate, cb
+
 
 # Auth stuff
 app.post '/login', (req, res) ->
@@ -278,9 +289,7 @@ app.post '/login', (req, res) ->
                     return
 
                 res.cookie 'entity', entity, {signed: true}
-                sessions[entity] ?= {}
-                sessions[entity].state = auth.state
-
+                retrieveSession({entity: entity}).state = auth.state
                 res.redirect auth.url
         else
             # already reg
@@ -289,9 +298,7 @@ app.post '/login', (req, res) ->
                 auth = Users.Identify entity
 
                 res.cookie 'entity', entity, {signed:true}
-                sessions[entity] ?= {}
-                sessions[entity].state = auth.state
-
+                retrieveSession(user).state = auth.state
                 res.redirect auth.url
             else
                 userCred = Users.LoadUserCredentials entity, (err) =>
@@ -300,9 +307,7 @@ app.post '/login', (req, res) ->
                         return
 
                     res.cookie 'entity', entity, {signed:true}
-                    sessions[entity] =
-                        form: {}
-                        flash: emptyFlash()
+                    cleanSession user
                     res.redirect '/'
 
 app.get '/cb', (req, res) ->
@@ -321,7 +326,7 @@ app.get '/cb', (req, res) ->
         res.send 'Error: no cookies. Please activate cookies for navigation on this site. Click <a href="/login">here</a> to retry.'
         return
 
-    session = sessions[entity]
+    session = retrieveSession {entity: entity}
     if not session
         res.send 400
         return
