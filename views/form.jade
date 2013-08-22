@@ -54,10 +54,14 @@ block sub
             var _preview = $('#preview');
             var _composer = $('#composer');
 
+            function stripScripts(txt) {
+                return txt.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+            }
+
             function updatePreview() {
-                var html = '<div class="hero-unit"><h1>' + _title.val() + '</h1>' +
-                           '<p>' + _summary.val() + '</p></div>' +
-                           '<div class="container">' + _composer.val() +
+                var html = '<div class="hero-unit"><h1>' + stripScripts(_title.val()) + '</h1>' +
+                           '<p>' + stripScripts(_summary.val()) + '</p></div>' +
+                           '<div class="container">' + stripScripts(_composer.val()) +
                            '</div>';
                 _preview.html(html);
             }
