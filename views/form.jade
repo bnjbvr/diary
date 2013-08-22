@@ -2,59 +2,70 @@ extends loggedin
 
 block sub
     .page-header
-        h1 Essay
+        h1 Writing an essay
 
-    if form.update
-        h3 Read link
-        a(href=form.readUrl)=form.title
-
-        h3 Deletion
-        a(href='/del/' + form.update).btn Delete
-        span  (be careful, no confirmation asked!)
-
-    h3 Form
     form(action='/new', method='post')
-        fieldset
-            legend Optional fields
-            input(type='hidden', value=token, name='_csrf')
-            if form.update
-                input(type='hidden', value=form.update, name='update')
-            p
-                label A title for your essay:
-                    if form.title
-                        input(type='text', name='title', placeholder='title', value=form.title)
-                    else
-                        input(type='text', name='title', placeholder='title')
-            p
-                label(for='summary') A summary (html) for your essay:
-                textarea(name='summary', id='summary', placeholder='Summary goes here', rows=5).field.span12=form.summary
-            p
-                label Private
-                    if form.update && form.isPrivate
-                        input(type='checkbox', name='isPrivate', checked='checked')
-                    else
-                        input(type='checkbox', name='isPrivate')
-        fieldset
-            legend Required field
-            p
-                label(for='content') The content of your essay
+       .tabbable
+            ul.nav.nav-tabs
+                li.active
+                    a(href='#tab-compose', data-toggle='tab') Compose
+                li
+                    a(href='#tab-preview', data-toggle='tab') Preview
+            .tab-content
+                .tab-pane.active#tab-compose
+                    fieldset
+                        legend Optional fields
+                        input(type='hidden', value=token, name='_csrf')
 
-                textarea(name='content', id='content', placeholder='Essay goes here', rows=5).field.span12=form.content
-            p
-                input(type='submit', value='write!').btn
+                        if form.update
+                            input(type='hidden', value=form.update, name='update')
 
-    script(src='/js/markdown.js')
-    script
-        (function(namespace){
-            var _radioMd = $('#radioMd');
+                        p
+                            label A title for your essay:
+                                if form.update && form.title
+                                    input(type='text', name='title', placeholder='title', value=form.title)#title
+                                else
+                                    input(type='text', name='title', placeholder='title')#title
+                        p
+                            label(for='summary') A summary (html) for your essay:
+                            textarea(name='summary', placeholder='Summary goes here', rows=5).field.span12#summary=form.summary
+                        p
+                            label Private
+                                if form.update && form.isPrivate
+                                    input(type='checkbox', name='isPrivate', checked='checked')
+                                else
+                                    input(type='checkbox', name='isPrivate')
+                    fieldset
+                        legend Required field
+                        p
+                            label(for='content') The content of your essay
+
+                    textarea(name='content', placeholder='Essay goes here',rows=5).field.span12#composer=form.content
+                    p.form-actions
+                        input(type='submit', value='write').btn
+
+                .tab-pane#tab-preview
+                    #preview
+
+    script.
+        $(document).ready(function() {
+            var _title = $('#title');
+            var _summary = $('#summary');
             var _preview = $('#preview');
-            var _content = $('#content');
-            var mdConverter = new Markdown.Converter();
+            var _composer = $('#composer');
 
-            namespace.preview = function preview(val) {
-                if( _radioMd.attr['checked'] ) {
-                    _preview.html( mdConverter.makeHtml( content.val() ) );
-                }
+            function updatePreview() {
+                var html = '<div class="hero-unit"><h1>' + _title.val() + '</h1>' +
+                           '<p>' + _summary.val() + '</p></div>' +
+                           '<div class="container">' + _composer.val() +
+                           '</div>';
+                _preview.html(html);
             }
-        })(this);
+
+            _composer.change(updatePreview);
+            _summary.change(updatePreview);
+            _title.change(updatePreview);
+
+            updatePreview();
+        });
 
