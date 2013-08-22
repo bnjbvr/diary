@@ -6,6 +6,35 @@ fs = require 'fs'
 config = require './config'
 PROD_MODE = config.prod
 
+class UserSession
+    constructor: () ->
+        @cleanInfos()
+        @cleanFlash()
+        @
+
+    pushError: (msg) ->
+        @flash.error.push msg
+        @
+
+    pushSuccess: (msg) ->
+        @flash.success.push msg
+        @
+
+    getFlash: () ->
+        flash = @flash
+        @cleanFlash()
+        flash
+
+    cleanFlash: () ->
+        @flash =
+            error: []
+            success: []
+        @
+
+    cleanInfos: () ->
+        @form = {}
+        @
+
 cacheUsers = {}
 
 class User
@@ -14,6 +43,7 @@ class User
         @appInfo = null
         @credentials = null
         @tent = null
+        @session = new UserSession
 
     saveAppInfo: (appInfo) ->
         # lazy implementation: saves app info in a file

@@ -14,43 +14,7 @@ PORT = config.port
 APP = config.app
 PROD_MODE = config.prod
 
-# Constants
-ESSAY_TYPE = 'https://tent.io/types/essay/v0#'
-
-# additional server side information about an entity / user
-sessions = {}
-
-retrieveSession = (user) ->
-    s = sessions[user.entity] ?= {}
-    s.flash ?= emptyFlash()
-    s
-
-cleanSession = (user) ->
-    s = retrieveSession user
-    s.form =
-        summary: ''
-        content: ''
-        title: ''
-    s
-
-pushErrorSession = (user, err) ->
-    s = retrieveSession user
-    s.flash.error.push err
-    s
-
-pushSuccessSession = (user, msg) ->
-    s = retrieveSession user
-    s.flash.success.push msg
-    s
-
-emptyFlashSession = (user) ->
-    s = retrieveSession user
-    s.flash = emptyFlash()
-    s
-
-emptyFlash = ->
-    error: []
-    success: []
+states = {}
 
 ###
 # Creation of the server, using expressjs.
@@ -103,11 +67,10 @@ app.get '/', csrf, checkAuth, (req, res) ->
             res.send 500, err
             return
 
-        cleanSession user
+        user.session.cleanInfos()
         res.render 'all',
             essays: essays
-            flash: retrieveSession(user).flash
-        emptyFlashSession user
+            flash: user.session.getFlash()
 
 # Print new post form
 app.get '/new', csrf, checkAuth, (req, res) ->
@@ -117,10 +80,10 @@ app.get '/new', csrf, checkAuth, (req, res) ->
         res.send 500, 'internal error'
         return
 
-    s = cleanSession user
+    user.session.cleanInfos()
     res.render 'form',
-        form: s.form
-        flash: s.flash
+        form: user.session.form
+        flash: user.session.getFlash()
 
 # Print edit post form
 app.get '/edit/:id', csrf, checkAuth, (req, res) ->
@@ -129,13 +92,13 @@ app.get '/edit/:id', csrf, checkAuth, (req, res) ->
     id = req.param 'id'
 
     if not id
-        pushErrorSession user, 'No id when editing a post'
+        user.session.pushError 'No id when editing a post'
         res.redirect '/'
         return
 
     Backend.GetEssayById user, id, (err, e) ->
         if err
-            pushErrorSession user, 'Error when trying to retrieve post with id ' + id + ': ' + err
+            user.session.pushError 'Error when trying to retrieve post with id ' + id + ': ' + err
             res.redirect '/'
             return
 
@@ -153,8 +116,7 @@ app.get '/edit/:id', csrf, checkAuth, (req, res) ->
 
         res.render 'form',
             form: form
-            flash: retrieveSession(user).flash
-        emptyFlashSession user
+            flash: user.session.getFlash()
 
 # Delete post by id
 app.get '/del/:id', csrf, checkAuth, (req, res) ->
@@ -163,16 +125,16 @@ app.get '/del/:id', csrf, checkAuth, (req, res) ->
     id = req.param 'id'
 
     if not id
-        pushErrorSession 'no id when deleting an essay'
+        user.session.pushError 'no id when deleting an essay'
         res.redirect '/'
         return
 
     Backend.DeleteEssayById user, id, (err) ->
         if err
-            pushErrorSession user, err
+            user.session.pushError err
             res.redirect '/edit/' + id
         else
-            pushSuccessSession user, 'Deletion of essay was successful.'
+            user.session.pushSuccess 'Deletion of essay was successful.'
             res.redirect '/'
 
 # Reader
@@ -223,11 +185,11 @@ app.post '/new', checkAuth, (req, res) ->
     isPrivate = !! req.param 'isPrivate'
 
     if not content or content.length == 0
-        retrieveSession(user).form =
+        user.session.form =
             title: title
             summary: summary
 
-        pushErrorMessage user, 'Missing parameter: no content'
+        user.session.pushError 'Missing parameter: no content'
         res.redirect '/'
         return
 
@@ -246,10 +208,10 @@ app.post '/new', checkAuth, (req, res) ->
 
     cb = (err) =>
         if err
-            pushErrorSession user, 'An error happened when ' + vbING + ' post: ' + err
+            user.session.pushError 'An error happened when ' + vbING + ' post: ' + err
         else
-            pushSuccessSession user, noun + ' of your essay successful.'
-            retrieveSession(user).form = {}
+            user.session.pushSuccess noun + ' of your essay successful.'
+            user.session.cleanInfos()
         res.redirect '/'
 
     if updateId
@@ -289,7 +251,7 @@ app.post '/login', (req, res) ->
                     return
 
                 res.cookie 'entity', entity, {signed: true}
-                retrieveSession({entity: entity}).state = auth.state
+                states[entity] = auth.state
                 res.redirect auth.url
         else
             # already reg
@@ -298,7 +260,7 @@ app.post '/login', (req, res) ->
                 auth = Users.Identify entity
 
                 res.cookie 'entity', entity, {signed:true}
-                retrieveSession(user).state = auth.state
+                states[entity] = auth.state
                 res.redirect auth.url
             else
                 userCred = Users.LoadUserCredentials entity, (err) =>
@@ -307,7 +269,7 @@ app.post '/login', (req, res) ->
                         return
 
                     res.cookie 'entity', entity, {signed:true}
-                    cleanSession user
+                    user.session.cleanInfos()
                     res.redirect '/'
 
 app.get '/cb', (req, res) ->
@@ -326,12 +288,12 @@ app.get '/cb', (req, res) ->
         res.send 'Error: no cookies. Please activate cookies for navigation on this site. Click <a href="/login">here</a> to retry.'
         return
 
-    session = retrieveSession {entity: entity}
-    if not session
+    formerState = states[entity] || null
+    if not formerState
         res.send 400
         return
 
-    if state != session.state
+    if state != formerState
         res.send 400, 'Error: misleading state.'
         return
 
@@ -339,25 +301,19 @@ app.get '/cb', (req, res) ->
         if err
             console.error err
             res.clearCookie 'entity'
-            delete cacheEntities[entity]
             res.send 500, 'Error when trading the auth code: ' + err + '. Please retry <a href="/login">here</a>.'
         else
-            session.form = {}
-            session.flash = emptyFlash()
             res.redirect '/'
 
 app.get '/logout', (req, res) ->
     entity = req.signedCookies.entity
     if entity
         res.clearCookie 'entity'
-    if sessions[entity]
-        delete sessions[entity]
     Users.Logout entity
     res.redirect '/login'
 
 app.get '/login', csrf, (req, res) ->
-    res.render 'login',
-        flash: emptyFlash()
+    res.render 'login'
 
 server = http.createServer(app).listen app.get('port'), () ->
     console.log 'Express server listening on port ' + app.get 'port'
