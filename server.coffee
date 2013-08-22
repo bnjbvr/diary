@@ -36,6 +36,11 @@ app.configure () ->
 
     app.enable 'trust proxy'
 
+    # helpers for jade
+    app.locals.formatDate = (n) ->
+        date = new Date n
+        'the ' + (1+date.getMonth()) + '/' + date.getDate() + '/' + date.getFullYear() + ' at ' + date.getHours() + ':' + date.getMinutes() + ':' + date.getSeconds()
+
 app.configure 'development', () ->
     app.use express.errorHandler()
     app.locals.pretty = true
@@ -68,6 +73,10 @@ app.get '/', csrf, checkAuth, (req, res) ->
             return
 
         user.session.cleanInfos()
+
+        for e in essays
+            e.readLink = '/read?user=' + qs.escape(entity) + '&id=' + qs.escape e.id
+
         res.render 'all',
             essays: essays
             flash: user.session.getFlash()
@@ -112,7 +121,6 @@ app.get '/edit/:id', csrf, checkAuth, (req, res) ->
             summary: e.content.excerpt || ''
             update: e.id
             isPrivate: isPrivate
-            readUrl: '/read?user=' + qs.escape(entity) + '&id=' + qs.escape e.id
 
         res.render 'form',
             form: form
