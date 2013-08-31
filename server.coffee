@@ -159,13 +159,13 @@ app.get '/edit/:id', csrf, checkAuth, (req, res) ->
 
     if not id
         user.session.pushError 'No id when editing a post'
-        res.redirect '/'
+        res.redirect '/my'
         return
 
     Backend.GetEssayById user, id, (err, e) ->
         if err
             user.session.pushError 'Error when trying to retrieve post with id ' + id + ': ' + err
-            res.redirect '/'
+            res.redirect '/my'
             return
 
         isPrivate = false
@@ -191,7 +191,7 @@ app.get '/del/:id', csrf, checkAuth, (req, res) ->
 
     if not id
         user.session.pushError 'no id when deleting an essay'
-        res.redirect '/'
+        res.redirect '/my'
         return
 
     Backend.DeleteEssayById user, id, (err) ->
@@ -200,7 +200,7 @@ app.get '/del/:id', csrf, checkAuth, (req, res) ->
             res.redirect '/edit/' + id
         else
             user.session.pushSuccess 'Deletion of essay was successful.'
-            res.redirect '/'
+            res.redirect '/my'
 
 # Reader
 stripScripts = (s) ->
@@ -255,7 +255,7 @@ app.post '/new', checkAuth, (req, res) ->
             summary: summary
 
         user.session.pushError 'Missing parameter: no content'
-        res.redirect '/'
+        res.redirect '/my'
         return
 
     essay =
@@ -277,7 +277,7 @@ app.post '/new', checkAuth, (req, res) ->
         else
             user.session.pushSuccess noun + ' of your essay successful.'
             user.session.cleanInfos()
-        res.redirect '/'
+        res.redirect '/my'
 
     if updateId
         Backend.UpdateEssay user, updateId, essay, isPrivate, cb
