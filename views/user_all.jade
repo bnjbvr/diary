@@ -2,17 +2,21 @@ extends loggedin
 
 block sub
     .page-header
-        h1 Your subscriptions' essays
+        h1 Essays
 
     table(class="table table-striped")
         thead
             tr
                 th Article
-                th Author
+                th Read link
+                th Delete
         tbody
             for e in essays
                 tr
                     td
-                        a(href=e.readLink)
+                        a(href='/edit/' + e.id)
                             =e.content.title + ' (last update ' + formatDate(e.published_at) + ')'
-                    td=e.profile.name
+                    td
+                        a(href=e.readLink) Read link
+                    td
+                        a(href='/del/' + e.id).btn Delete

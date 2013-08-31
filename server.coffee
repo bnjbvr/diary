@@ -56,9 +56,8 @@ checkAuth = (req, res, next) ->
     else
         res.redirect '/login'
 
-# Get all route
-app.get '/', csrf, checkAuth, (req, res) ->
-    console.log 'Accessing /'
+# Get all's users route
+app.get '/my', csrf, checkAuth, (req, res) ->
     entity = req.signedCookies.entity
 
     user = Users.Get entity
@@ -77,9 +76,66 @@ app.get '/', csrf, checkAuth, (req, res) ->
         for e in essays
             e.readLink = '/read?user=' + qs.escape(entity) + '&id=' + qs.escape e.id
 
+        res.render 'user_all',
+            essays: essays
+            flash: user.session.getFlash()
+
+# Get all subscribed route
+app.get '/', csrf, checkAuth, (req, res) ->
+    entity = req.signedCookies.entity
+
+    user = Users.Get entity
+    if not user
+        console.error 'feed: no valid user entry for ' + entity
+        res.send 500, 'internal error'
+        return
+
+    Backend.GetFeed user, (err, essays) =>
+        if err
+            res.send 500, err
+            return
+        user.session.cleanInfos()
+        for e in essays
+            e.readLink = '/friend?user=' + qs.escape(e.entity) + '&id=' + qs.escape e.id
         res.render 'all',
             essays: essays
             flash: user.session.getFlash()
+
+# Get friend article
+app.get '/friend', csrf, checkAuth, (req, res) ->
+    id = req.param 'id'
+    entity = req.param 'user'
+
+    user = Users.Get req.signedCookies.entity
+    if not user
+        console.error 'feed: no valid user entry for ' + entity
+        res.send 500, 'internal error'
+        return
+
+    if not id or not entity
+        res.send 500, 'Missing parameter.'
+        return
+
+    entity = qs.unescape entity
+    if not /^https?:\/\//ig.test entity
+        res.send 500, "The entity URL you've entered doesn't have a scheme (http or https)."
+        return
+
+    entity = entity.toLowerCase()
+    if entity[ entity.length-1 ] == '/'
+        entity = entity.slice 0, entity.length-1
+
+    Backend.GetFriendEssayById user, entity, id, (err, essay, profile) =>
+        if err
+            res.send 500, 'Error when retrieving your subscription essay: ' + err
+            return
+
+        res.render 'friend',
+            essay:
+                title: essay.content.title
+                summary: stripScripts essay.content.excerpt
+                content: stripScripts essay.content.body
+            profile: profile
 
 # Print new post form
 app.get '/new', csrf, checkAuth, (req, res) ->

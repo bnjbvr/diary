@@ -27,6 +27,51 @@ exports.GetEssays = (user, cb) ->
     user.tent.query(tcb).types(ESSAY_TYPE).entities(user.entity)
 
 
+exports.GetFeed = (user, cb) ->
+    tcb = (err, headers, body) =>
+        if err
+            console.error 'Backend.GetFeed: when fetching feed of ' + user.entity + ' :' + err
+            cb 'Error when fetching essays: ' + err
+            return
+
+        essays = body.posts
+        # replaces blank titles by "untitled"
+        if essays.map
+            essays = essays.map (a) =>
+                if not a.content or not a.content.title or a.content.title.length == 0
+                    a.content.title = '(untitled)'
+
+                a.profile = body.profiles[a.entity]
+                if not a.profile
+                    a.profile = {name: ''}
+
+                a
+
+        cb null, essays
+
+    user.tent.query( {profiles: 'entity'}, tcb ).types(ESSAY_TYPE)
+    # TODO maybe factorize this with getessays
+
+
+exports.GetFriendEssayById = (user, entity, id, cb) ->
+    tcb = (err, headers, body) =>
+        if err
+            console.error 'Backend.GetFriendEssayById: fetching essay of ' + user.entity + ' with id ' + id + ' : ' + err
+            cb 'Error when fetching a single essay: ' + err
+            return
+
+        essay = body.post
+
+        console.log body.profiles
+        profile = body.profiles[entity] || {}
+        profile.name ?= ''
+        profile.bio ?= ''
+
+        cb null, essay, profile
+
+    user.tent.get(id, entity, {profiles: 'entity'}, tcb)
+
+
 GetEssayById = exports.GetEssayById = (user, id, cb) ->
     tcb = (err, headers, body) =>
         if err
