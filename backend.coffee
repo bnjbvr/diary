@@ -24,7 +24,7 @@ exports.GetEssays = (user, cb) ->
 
         cb null, essays
 
-    user.tent.query(tcb).types(ESSAY_TYPE)
+    user.tent.query(tcb).types(ESSAY_TYPE).entities(user.entity)
 
 
 GetEssayById = exports.GetEssayById = (user, id, cb) ->
