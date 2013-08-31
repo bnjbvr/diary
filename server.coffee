@@ -136,6 +136,7 @@ app.get '/friend', csrf, checkAuth, (req, res) ->
                 summary: stripScripts essay.content.excerpt
                 content: stripScripts essay.content.body
             profile: profile
+            flash: user.session.getFlash()
 
 # Print new post form
 app.get '/new', csrf, checkAuth, (req, res) ->
