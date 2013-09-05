@@ -59,12 +59,7 @@ checkAuth = (req, res, next) ->
 # Get all's users route
 app.get '/my', csrf, checkAuth, (req, res) ->
     entity = req.signedCookies.entity
-
     user = Users.Get entity
-    if not user
-        console.error 'get: no valid user entry for ' + entity
-        res.send 500, 'internal error'
-        return
 
     Backend.GetEssays user, (err, essays) =>
         if err
@@ -83,12 +78,7 @@ app.get '/my', csrf, checkAuth, (req, res) ->
 # Get all subscribed route
 app.get '/', csrf, checkAuth, (req, res) ->
     entity = req.signedCookies.entity
-
     user = Users.Get entity
-    if not user
-        console.error 'feed: no valid user entry for ' + entity
-        res.send 500, 'internal error'
-        return
 
     Backend.GetFeed user, (err, essays) =>
         if err
@@ -105,12 +95,7 @@ app.get '/', csrf, checkAuth, (req, res) ->
 app.get '/friend', csrf, checkAuth, (req, res) ->
     id = req.param 'id'
     entity = req.param 'user'
-
     user = Users.Get req.signedCookies.entity
-    if not user
-        console.error 'feed: no valid user entry for ' + entity
-        res.send 500, 'internal error'
-        return
 
     if not id or not entity
         res.send 500, 'Missing parameter.'
@@ -141,11 +126,6 @@ app.get '/friend', csrf, checkAuth, (req, res) ->
 # Print new post form
 app.get '/new', csrf, checkAuth, (req, res) ->
     user = Users.Get req.signedCookies.entity
-    if not user
-        console.error '/new: no valid user entry for ' + user.entity
-        res.send 500, 'internal error'
-        return
-
     user.session.cleanInfos()
     res.render 'form',
         form: user.session.form
