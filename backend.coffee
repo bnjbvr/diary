@@ -1,5 +1,10 @@
+qs      = require 'querystring'
+
 # Constants
 ESSAY_TYPE = 'https://tent.io/types/essay/v0#'
+SUBSCRIPTION_TYPE = 'https://tent.io/types/subscription/v0#'
+
+ESSAY_SUBSCRIPTION = SUBSCRIPTION_TYPE + qs.escape ESSAY_TYPE
 
 ###
 # Retrieves all essays of the user.
@@ -62,7 +67,6 @@ exports.GetFriendEssayById = (user, entity, id, cb) ->
 
         essay = body.post
 
-        console.log body.profiles
         profile = body.profiles[entity] || {}
         profile.name ?= ''
         profile.bio ?= ''
@@ -71,6 +75,42 @@ exports.GetFriendEssayById = (user, entity, id, cb) ->
 
     user.tent.get(id, entity, {profiles: 'entity'}, tcb)
 
+
+exports.AddSubscription = (user, entity, cb) ->
+    tcb = (err, headers, body) =>
+        if err
+            console.error 'Backend.SubscribeFriend: error for ' + user.entity + ' when subscribing on ' + entity + ': ' + err
+            cb 'Error when subscribing to an entity: ' + err
+            return
+        cb null
+
+    subscription =
+        type: ESSAY_TYPE
+
+    user.tent.create(ESSAY_SUBSCRIPTION, tcb)
+             .content(subscription)
+             .mentions(entity)
+
+exports.GetSubscriptions = (user, cb) ->
+    tcb = (err, headers, body) =>
+        if err
+            console.error 'Backend.SubscribeFriend: error for ' + user.entity + ' when subscribing on ' + entity + ': ' + err
+            cb 'Error when subscribing to an entity: ' + err
+            return
+
+        subs = body.posts
+        subs = subs.map (s) =>
+            subEntity = if s.mentions.length > 0 then s.mentions[0] else null
+            subEntity = if subEntity.entity then subEntity.entity else null
+            if not subEntity
+                s.profile = {name: '?'}
+                return s
+            s.profile = body.profiles[subEntity] || {}
+            s.profile.name ?= subEntity
+            s
+        cb null, subs
+
+    user.tent.query({ profiles: 'entity' }, tcb).types(SUBSCRIPTION_TYPE + ESSAY_TYPE)
 
 GetEssayById = exports.GetEssayById = (user, id, cb) ->
     tcb = (err, headers, body) =>

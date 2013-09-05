@@ -1,0 +1,15 @@
+extends loggedin
+
+block sub
+    .page-header
+        h1 Add a subscription
+
+    form(action='/subs/new', method='post')
+        fieldset
+            legend New subscription
+            input(type='hidden', value=token, name='_csrf')
+            p
+                label(for='entity') Enter here the entity you want to subscribe to:
+                input(type='text', name='entity', placeholder='Entity')#entity
+            p.form-actions
+                input(type='submit', value='subscribe').btn

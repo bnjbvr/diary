@@ -91,6 +91,56 @@ app.get '/', csrf, checkAuth, (req, res) ->
             essays: essays
             flash: user.session.getFlash()
 
+# Get subscriptions
+app.get '/subs/list', csrf, checkAuth, (req, res) ->
+    entity = req.signedCookies.entity
+    user = Users.Get entity
+
+    Backend.GetSubscriptions user, (err, subs) ->
+        if err
+            res.send 500, err
+            return
+        res.render 'subs_list',
+            subs: subs
+            flash: user.session.getFlash()
+
+# View for add subscription form
+app.get '/subs/add', csrf, checkAuth, (req, res) ->
+    entity = req.signedCookies.entity
+    user = Users.Get entity
+    res.render 'subs_form',
+        flash: user.session.getFlash()
+
+# Adds a subscription
+app.post '/subs/new', csrf, checkAuth, (req, res) ->
+    entity = req.signedCookies.entity
+    user = Users.Get entity
+    # check input
+    subscription = req.param 'entity'
+    if not subscription
+        res.send 500, 'Missing parameter.'
+        return
+
+    if not /^https?:\/\//ig.test subscription
+        res.send "The entity you've entered doesn't have a scheme (http or https), please <a href='/subs/add'>retry</a>." # TODO better handle errors
+        return
+
+    subscription = subscription .toLowerCase()
+    if subscription[ subscription.length-1 ] == '/'
+        subscription = subscription .slice 0, entity.length-1
+    # TODO factorize this part with /login
+
+    subTent = PublicClient.Get subscription, (err, _) =>
+        if err
+            res.send 404, "The entity you want to subscribe to doesn't seem to exist: " + err # TODO better handle errors
+            return
+
+        Backend.AddSubscription user, subscription, (err2) =>
+            if err2
+                res.send 500, err2
+                return
+            res.redirect '/subs/list'
+
 # Get friend article
 app.get '/friend', csrf, checkAuth, (req, res) ->
     id = req.param 'id'

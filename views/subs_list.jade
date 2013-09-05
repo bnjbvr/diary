@@ -1,0 +1,14 @@
+extends loggedin
+
+block sub
+    .page-header
+        h1 Your subscriptions
+
+    table(class="table table-striped")
+        thead
+            tr
+                th Name
+        tbody
+            for e in subs
+                tr
+                    td=e.profile.name
