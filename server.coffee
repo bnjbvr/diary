@@ -92,7 +92,7 @@ app.get '/', csrf, checkAuth, (req, res) ->
             flash: user.session.getFlash()
 
 # Get subscriptions
-app.get '/subs/list', csrf, checkAuth, (req, res) ->
+app.get '/subs', csrf, checkAuth, (req, res) ->
     entity = req.signedCookies.entity
     user = Users.Get entity
 
@@ -105,7 +105,7 @@ app.get '/subs/list', csrf, checkAuth, (req, res) ->
             flash: user.session.getFlash()
 
 # View for add subscription form
-app.get '/subs/add', csrf, checkAuth, (req, res) ->
+app.get '/subs/new', csrf, checkAuth, (req, res) ->
     entity = req.signedCookies.entity
     user = Users.Get entity
     res.render 'subs_form',
@@ -174,7 +174,7 @@ app.get '/friend', csrf, checkAuth, (req, res) ->
             flash: user.session.getFlash()
 
 # Print new post form
-app.get '/new', csrf, checkAuth, (req, res) ->
+app.get '/my/new', csrf, checkAuth, (req, res) ->
     user = Users.Get req.signedCookies.entity
     user.session.cleanInfos()
     res.render 'form',

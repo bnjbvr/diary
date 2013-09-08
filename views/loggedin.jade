@@ -7,12 +7,22 @@ block content
                 a.brand Diary
                 .nav-collapse.collapse
                     ul.nav
-                        li
-                            a(href='/') Feed
-                        li
-                            a(href='/my') My essays
-                        li
-                            a(href='/new') Create
+                        li.dropdown
+                            a(href='#', data-toggle='dropdown').dropdown-toggle Feed
+                            ul.dropdown-menu
+                                li
+                                    a(href='/') Show
+                                li
+                                    a(href='/subs/') Show subscriptions
+                                li
+                                    a(href='/subs/new/') Add subscription
+                        li.dropdown
+                            a(href='#', data-toggle='dropdown').dropdown-toggle Admin
+                            ul.dropdown-menu
+                                li
+                                    a(href='/my') My essays
+                                li
+                                    a(href='/my/new') Create
                         li.pull-right
                             a(href='/logout') Logout
                         li
