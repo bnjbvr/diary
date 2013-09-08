@@ -57,6 +57,7 @@ checkAuth = (req, res, next) ->
     if entity and Users.IsAuthenticated(entity)
         next()
     else
+        res.cookie 'next', req.url, {signed:true}
         res.redirect '/login'
 
 checkValidEntity = (entity) ->
@@ -374,7 +375,13 @@ app.post '/login', (req, res) ->
 
                     res.cookie 'entity', entity, {signed:true}
                     user.session.cleanInfos()
-                    res.redirect '/'
+
+                    if req.signedCookies.next
+                        nextUrl = req.signedCookies.next
+                        res.clearCookie 'next'
+                        res.redirect nextUrl
+                    else
+                        res.redirect '/'
 
 app.get '/cb', (req, res) ->
     code = req.param 'code'
@@ -407,7 +414,12 @@ app.get '/cb', (req, res) ->
             res.clearCookie 'entity'
             res.send 500, 'Error when trading the auth code: ' + err + '. Please retry <a href="/login">here</a>.'
         else
-            res.redirect '/'
+            if req.signedCookies.next
+                nextUrl = req.signedCookies.next
+                res.clearCookie 'next'
+                res.redirect nextUrl
+            else
+                res.redirect '/'
 
 app.get '/logout', (req, res) ->
     entity = req.signedCookies.entity
