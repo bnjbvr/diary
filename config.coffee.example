@@ -1,3 +1,14 @@
+types = [
+    'https://tent.io/types/essay/v0',           # This is an essay app
+    'https://tent.io/types/status/v0',          # Post status to announce essay
+    'https://tent.io/types/repost/v0',          # Reposts
+    'https://tent.io/types/tag/v0',             # Tags (categories)
+    'https://tent.io/types/favorite/v0',        # Favorites
+
+    'https://diary.benj.me/types/metapost/v0',  # Meta informations on the post
+    'https://diary.benj.me/types/comment/v0',   # Comment
+]
+
 module.exports =
     # Prod settings: in prod mode, auth requests are done.
     # In dev mode (dev == !prod), auth are directly retrieved from files in app/ and user/
@@ -12,6 +23,7 @@ module.exports =
         url: 'http://diary.benj.me'
         redirect_uri: 'http://diary.benj.me/cb'
         types:
-            write: ['https://tent.io/types/essay/v0']
-            read: ['https://tent.io/types/essay/v0']
+            write: types
+            read: types
+        scopes: ['permissions']
 
