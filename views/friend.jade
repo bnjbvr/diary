@@ -1,16 +1,16 @@
 extends loggedin
 
 block sub
-    if profile
-        .page-header
-            h1=profile.name
-            p=profile.bio
+    #central
+        if profile
+            .page-header
+                h1=profile.name
+                p=profile.bio
 
-    .hero-unit
-        h1=essay.title
+        .hero-unit
+            h1=essay.title
+            p
+                | !{essay.summary}
         p
-            | !{essay.summary}
-    .container
-        .row
             | !{essay.content}
 
