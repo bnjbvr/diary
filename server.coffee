@@ -104,13 +104,6 @@ app.get '/subs', csrf, checkAuth, (req, res) ->
             subs: subs
             flash: user.session.getFlash()
 
-# View for add subscription form
-app.get '/subs/new', csrf, checkAuth, (req, res) ->
-    entity = req.signedCookies.entity
-    user = Users.Get entity
-    res.render 'subs_form',
-        flash: user.session.getFlash()
-
 # Adds a subscription
 app.post '/subs/new', csrf, checkAuth, (req, res) ->
     entity = req.signedCookies.entity

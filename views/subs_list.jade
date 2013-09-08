@@ -4,11 +4,21 @@ block sub
     .page-header
         h1 Your subscriptions
 
-    table(class="table table-striped")
-        thead
-            tr
-                th Name
-        tbody
-            for e in subs
+    div
+        form(action='/subs/new', method='post').form-inline
+            h3 New subscription
+            input(type='hidden', value=token, name='_csrf')
+            p
+                label(for='entity') Enter here the entity you want to subscribe to:
+                input(type='text', name='entity', placeholder='Entity')#entity
+                input(type='submit', value='subscribe').btn
+        h3 Your subscriptions
+        table(class="table table-striped")
+            thead
                 tr
-                    td=e.profile.name
+                    th Name
+            tbody
+                for e in subs
+                    tr
+                        td=e.profile.name
+
