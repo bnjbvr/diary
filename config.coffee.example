@@ -4,6 +4,7 @@ types = [
     'https://tent.io/types/repost/v0',          # Reposts
     'https://tent.io/types/tag/v0',             # Tags (categories)
     'https://tent.io/types/favorite/v0',        # Favorites
+    'https://tent.io/types/subscription/v0',    # Subscriptions
 
     'https://diary.benj.me/types/metapost/v0',  # Meta informations on the post
     'https://diary.benj.me/types/comment/v0',   # Comment
