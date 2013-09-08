@@ -202,6 +202,7 @@ app.get '/friend', csrf, checkAuth, (req, res) ->
                 summary: stripScripts essay.content.excerpt
                 content: stripScripts essay.content.body
             profile: profile
+            entity: entity if entity != user.entity
             flash: user.session.getFlash()
 
 # Print new post form

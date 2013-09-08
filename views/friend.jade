@@ -6,6 +6,11 @@ block sub
             .page-header
                 h1=profile.name
                 p=profile.bio
+        if entity
+            form(action='/subs/new', method='post').form-inline
+                input(type='hidden', value=token, name='_csrf')
+                input(type='hidden', name='entity', value=entity)
+                input(type='submit', value='subscribe').btn
 
         .hero-unit
             h1=essay.title
