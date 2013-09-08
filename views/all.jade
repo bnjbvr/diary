@@ -16,5 +16,7 @@ block sub
                     td
                         a(href=e.readLink)
                             =e.content.title
-                    td=e.profile.name
+                    td
+                        a(href=e.pageLink)
+                            =e.profile.name
                     td=formatDate(e.published_at)

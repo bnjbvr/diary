@@ -20,5 +20,9 @@ block sub
             tbody
                 for e in subs
                     tr
-                        td=e.profile.name
+                        td
+                            if e.pageLink
+                                a(href=e.pageLink)=e.profile.name
+                            else
+                                e.profile.name
 

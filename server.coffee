@@ -68,6 +68,7 @@ checkValidEntity = (entity) ->
     if not /^https?:\/\//ig.test entity
         return {error: "The entity you've entered doesn't contain a scheme (http or https)."}
 
+    entity = qs.unescape entity
     entity = entity.toLowerCase()
     if entity[ entity.length-1 ] == '/'
         entity = entity.slice 0, entity.length-1
@@ -79,6 +80,9 @@ showErrorPage = (user, res) ->
 
 stripScripts = (s) ->
     s.replace /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ''
+
+makePageLink = (entity) ->
+    '/page?user=' + qs.escape entity
 
 # Get all's users route
 app.get '/my', csrf, checkAuth, (req, res) ->
@@ -114,6 +118,7 @@ app.get '/', csrf, checkAuth, (req, res) ->
         user.session.cleanInfos()
         for e in essays
             e.readLink = '/friend?user=' + qs.escape(e.entity) + '&id=' + qs.escape e.id
+            e.pageLink = makePageLink e.entity
         res.render 'all',
             essays: essays
             flash: user.session.getFlash()
@@ -142,6 +147,10 @@ app.get '/subs', csrf, checkAuth, (req, res) ->
             user.pushError err
             showErrorPage user, res
             return
+
+        subs = subs.map (s) ->
+            s.pageLink = makePageLink s.profile.entity
+            s
 
         res.render 'subs_list',
             subs: subs
@@ -202,7 +211,32 @@ app.get '/friend', csrf, checkAuth, (req, res) ->
                 summary: stripScripts essay.content.excerpt
                 content: stripScripts essay.content.body
             profile: profile
+            entity: {value: entity, pageLink: makePageLink entity} if entity != user.entity
+            flash: user.session.getFlash()
+
+app.get '/page', checkAuth, (req, res) ->
+    entity = req.param 'user'
+    user = Users.Get req.signedCookies.entity
+    validCheck = checkValidEntity entity
+    if validCheck.error
+        user.pushError validCheck.error
+        showErrorPage user, res
+        return
+
+    Backend.GetAllByEntity user, entity, (err, essays, profile) =>
+        if err
+            user.pushError err
+            showErrorPage user, res
+            return
+
+        essays = essays.map (p) =>
+            p.readLink = '/friend?user=' + qs.escape(entity) + '&id=' + qs.escape p.id
+            p
+
+        res.render 'entity_all',
+            essays: essays,
             entity: entity if entity != user.entity
+            profile: profile
             flash: user.session.getFlash()
 
 # Print new post form
@@ -278,7 +312,7 @@ app.get '/read', (req, res) ->
         res.send 400, 'Missing parameter: id'
         return
 
-    validCheck = checkValidEntity qs.unescape entity
+    validCheck = checkValidEntity entity
     if validCheck.error
         res.send 400, validCheck.error
         return

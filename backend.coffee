@@ -56,6 +56,22 @@ exports.GetFeed = (user, cb) ->
     user.tent.query( {profiles: 'entity'}, tcb ).types(ESSAY_TYPE)
     # TODO maybe factorize this with getessays
 
+exports.GetAllByEntity = (user, entity, cb) ->
+    tcb = (err, headers, body) =>
+        if err
+            console.error 'Backend.GetAllFromFriend for ' + user.entity + ': ' + err
+            cb 'Error when fetching all essays from  ' + entity + ': ' + err
+            return
+
+        essays = body.posts.map (a) ->
+            if not a.content or not a.content.title or a.content.title.length == 0
+                a.content.title = '(untitled)'
+            a
+        body.profiles ?= {}
+        profile = body.profiles[entity] || {name: entity}
+        cb null, essays, profile
+
+    user.tent.query( {profiles: 'entity'}, tcb ).entities(entity).types(ESSAY_TYPE)
 
 exports.GetFriendEssayById = (user, entity, id, cb) ->
     tcb = (err, headers, body) =>
@@ -108,6 +124,7 @@ exports.GetSubscriptions = (user, cb) ->
             body.profiles ?= {}
             s.profile = body.profiles[subEntity] || {}
             s.profile.name ?= subEntity
+            s.profile.entity = subEntity
             s
         cb null, subs
 
