@@ -214,7 +214,7 @@ app.get '/friend', csrf, checkAuth, (req, res) ->
             entity: {value: entity, pageLink: makePageLink entity} if entity != user.entity
             flash: user.session.getFlash()
 
-app.get '/page', checkAuth, (req, res) ->
+app.get '/page', csrf, checkAuth, (req, res) ->
     entity = req.param 'user'
     user = Users.Get req.signedCookies.entity
     validCheck = checkValidEntity entity
