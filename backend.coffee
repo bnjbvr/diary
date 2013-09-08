@@ -137,26 +137,25 @@ exports.UpdateEssay = (user, id, essay, isPrivate, cb) ->
             cb err
             return
 
-        tcb = (err2, _) =>
+        tcb = (err2, headers, body) =>
             if err2
                 console.error 'Backend.UpdateEssay: ' + err2
                 cb err2
                 return
-            cb null
+            cb null, body.post
 
         user.tent.update(id, formerEssay.version.id, tcb)
             .type(ESSAY_TYPE)
             .content(essay)
             .permissions(!isPrivate)
 
-
 exports.CreateEssay = (user, essay, isPrivate, cb) ->
-    tcb = (err, _) =>
+    tcb = (err, headers, body) =>
         if err
             console.error 'Backend.CreateEssay: ' + err
             cb err
             return
-        cb null
+        cb null, body.post
 
     user.tent.create(ESSAY_TYPE, tcb)
         .publishedAt( +new Date() )

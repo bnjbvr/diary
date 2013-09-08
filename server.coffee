@@ -7,6 +7,7 @@ qs      = require 'querystring'
 Users           = require './users'
 Backend         = require './backend'
 PublicClient    = require './public-client'
+Database        = require './database'
 
 # TODO
 # - add successes messages
@@ -115,6 +116,20 @@ app.get '/', csrf, checkAuth, (req, res) ->
             e.readLink = '/friend?user=' + qs.escape(e.entity) + '&id=' + qs.escape e.id
         res.render 'all',
             essays: essays
+            flash: user.session.getFlash()
+
+app.get '/global', csrf, checkAuth, (req, res) ->
+    user = Users.Get req.signedCookies.entity
+    Database.GetGlobalFeed (err, posts) =>
+        if err
+            user.pushError 'When retrieving the global feed, ' + err
+            showErrorPage user, res
+            return
+        posts = posts.map (p) ->
+            p.readLink = '/friend?user=' + qs.escape(p.entity) + '&id=' + qs.escape p.id
+            p
+        res.render 'global',
+            essays: posts
             flash: user.session.getFlash()
 
 # Get subscriptions
@@ -316,13 +331,19 @@ app.post '/new', checkAuth, (req, res) ->
         vbING = 'creating'
         noun = 'Creation'
 
-    cb = (err) =>
+    cb = (err, post) =>
         if err
             user.pushError 'An error happened when ' + vbING + ' post: ' + err
         else
             user.pushSuccess noun + ' of your essay successful.'
             user.session.cleanInfos()
-        res.redirect '/my'
+            if not isPrivate
+                Database.SaveForGlobalFeed post, (err2) =>
+                    if err2
+                        user.pushError 'Error when adding the post to the global feed: ' + err2
+                    res.redirect '/my'
+            else
+                res.redirect '/my'
 
     if updateId
         Backend.UpdateEssay user, updateId, essay, isPrivate, cb
@@ -433,4 +454,3 @@ app.get '/login', csrf, (req, res) ->
 
 server = http.createServer(app).listen app.get('port'), () ->
     console.log 'Express server listening on port ' + app.get 'port'
-

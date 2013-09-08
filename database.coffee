@@ -6,9 +6,13 @@ if config.prod
 else
     db = new sqlite.Database ':memory:'
 
-db.run 'CREATE TABLE registration (entity TEXT PRIMARY KEY, appId TEXT, credentials TEXT)', (err) ->
-    if err
-        console.warn err
+INITIAL_CREATION = ['CREATE TABLE registration (entity TEXT PRIMARY KEY, appId TEXT, credentials TEXT);',
+    'CREATE TABLE feed (entity TEXT, id TEXT, title TEXT, pubDate INT, UNIQUE (entity, id) ON CONFLICT REPLACE);']
+
+for stmt in INITIAL_CREATION
+    db.run stmt, (err) ->
+        if err
+            console.warn err
 
 exports.saveUserCred = (entity, appInfo, cb) ->
     appId = appInfo.id
@@ -21,7 +25,7 @@ exports.saveUserCred = (entity, appInfo, cb) ->
             return
         cb null
 
-tryFindUser = exports.tryFindUser = (entity, cb) ->
+exports.tryFindUser = (entity, cb) ->
     db.get 'SELECT * FROM registration WHERE entity = ?', entity, (err, row) ->
         if err
             cb 'Error when retrieving a user: ' + err
@@ -37,3 +41,19 @@ tryFindUser = exports.tryFindUser = (entity, cb) ->
             id: row.appId
             cred: JSON.parse row.credentials
         cb null, appInfo
+
+exports.SaveForGlobalFeed = (post, cb) ->
+    db.run "INSERT INTO feed VALUES (?, ?, ?, ?)", post.entity, post.id, post.content.title, post.published_at, (err) =>
+        if err
+            console.error 'Database.SaveForGlobalFeed: ' + err
+            cb err
+            return
+        cb null
+
+exports.GetGlobalFeed = (cb) ->
+    db.all "SELECT * FROM feed ORDER BY pubDate DESC LIMIT 20", (err, posts) =>
+        if err
+            console.error 'Database.GetGlobalFeed: ' + err
+            cb err, null
+            return
+        cb null, posts
