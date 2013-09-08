@@ -4,8 +4,6 @@ qs      = require 'querystring'
 ESSAY_TYPE = 'https://tent.io/types/essay/v0#'
 SUBSCRIPTION_TYPE = 'https://tent.io/types/subscription/v0#'
 
-ESSAY_SUBSCRIPTION = SUBSCRIPTION_TYPE + qs.escape ESSAY_TYPE
-
 ###
 # Retrieves all essays of the user.
 #
@@ -87,7 +85,7 @@ exports.AddSubscription = (user, entity, cb) ->
     subscription =
         type: ESSAY_TYPE
 
-    user.tent.create(ESSAY_SUBSCRIPTION, tcb)
+    user.tent.create(SUBSCRIPTION_TYPE + ESSAY_TYPE, tcb)
              .content(subscription)
              .mentions(entity)
 
@@ -110,7 +108,7 @@ exports.GetSubscriptions = (user, cb) ->
             s
         cb null, subs
 
-    user.tent.query({ profiles: 'entity' }, tcb).types(SUBSCRIPTION_TYPE + ESSAY_TYPE)
+    user.tent.query({ profiles: 'mentions' }, tcb).types(SUBSCRIPTION_TYPE + ESSAY_TYPE)
 
 GetEssayById = exports.GetEssayById = (user, id, cb) ->
     tcb = (err, headers, body) =>
