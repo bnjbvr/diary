@@ -9,10 +9,12 @@ block sub
             tr
                 th Article
                 th Author
+                th Last update
         tbody
             for e in essays
                 tr
                     td
                         a(href=e.readLink)
-                            =e.content.title + ' (last update ' + formatDate(e.published_at) + ')'
+                            =e.content.title
                     td=e.profile.name
+                    td=formatDate(e.published_at)

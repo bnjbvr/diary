@@ -9,14 +9,16 @@ block sub
             tr
                 th Article
                 th Read link
+                th Last update
                 th Delete
         tbody
             for e in essays
                 tr
                     td
                         a(href='/edit/' + e.id)
-                            =e.content.title + ' (last update ' + formatDate(e.published_at) + ')'
+                            =e.content.title
                     td
                         a(href=e.readLink) Read link
+                    td=formatDate(e.published_at)
                     td
                         a(href='/del/' + e.id).btn Delete
