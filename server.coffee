@@ -56,6 +56,18 @@ checkAuth = (req, res, next) ->
     else
         res.redirect '/login'
 
+checkValidEntity = (entity) ->
+    if not entity
+        return {error: "Missing parameter: entity."}
+
+    if not /^https?:\/\//ig.test entity
+        return {error: "The entity you've entered doesn't contain a scheme (http or https)."}
+
+    entity = entity.toLowerCase()
+    if entity[ entity.length-1 ] == '/'
+        entity = entity.slice 0, entity.length-1
+    return {entity: entity}
+
 # Get all's users route
 app.get '/my', csrf, checkAuth, (req, res) ->
     entity = req.signedCookies.entity
@@ -108,20 +120,14 @@ app.get '/subs', csrf, checkAuth, (req, res) ->
 app.post '/subs/new', csrf, checkAuth, (req, res) ->
     entity = req.signedCookies.entity
     user = Users.Get entity
+
     # check input
     subscription = req.param 'entity'
-    if not subscription
-        res.send 500, 'Missing parameter.'
+    validCheck = checkValidEntity subscription
+    if validCheck.error
+        res.send 400, validCheck.error
         return
-
-    if not /^https?:\/\//ig.test subscription
-        res.send "The entity you've entered doesn't have a scheme (http or https), please <a href='/subs/add'>retry</a>." # TODO better handle errors
-        return
-
-    subscription = subscription .toLowerCase()
-    if subscription[ subscription.length-1 ] == '/'
-        subscription = subscription .slice 0, entity.length-1
-    # TODO factorize this part with /login
+    subscription = validCheck.entity
 
     subTent = PublicClient.Get subscription, (err, _) =>
         if err
@@ -312,17 +318,12 @@ app.post '/new', checkAuth, (req, res) ->
 app.post '/login', (req, res) ->
     entity = req.param 'entity'
 
-    if not entity
-        res.send 'Missing parameter entity'
+    # check input
+    validCheck = checkValidEntity entity
+    if validCheck.error
+        res.send 400, validCheck.error
         return
-
-    if not /^https?:\/\//ig.test entity
-        res.send "The URL you've entered doesn't have a scheme (http or https), please <a href='/login'>retry</a>."
-        return
-
-    entity = entity.toLowerCase()
-    if entity[ entity.length-1 ] == '/'
-        entity = entity.slice 0, entity.length-1
+    entity = validCheck.entity
 
     Users.LoadRegisteredUser entity, (err, user) =>
         if err
