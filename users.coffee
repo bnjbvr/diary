@@ -4,6 +4,7 @@ Td = require 'tent-discover'
 fs = require 'fs'
 
 config = require './config'
+database = require './database'
 PROD_MODE = config.prod
 
 class UserSession
@@ -45,11 +46,13 @@ class User
         @tent = null
         @session = new UserSession
 
-    saveAppInfo: (appInfo) ->
-        # lazy implementation: saves app info in a file
+    saveAppInfo: (appInfo, cb) ->
         @appInfo = appInfo
-        filename = 'app/' + @shortEntity + '.json'
-        fs.writeFileSync filename, JSON.stringify appInfo
+        database.saveUserCred @shortEntity, appInfo, (err) ->
+            if err
+                cb err
+                return
+            cb null
         @
 
     saveUserCred: (cred, cb) ->
@@ -128,12 +131,12 @@ exports.Register = (entity, app, cb) ->
                 cb 'Error on register: ' + regError
                 return
 
-            user.saveAppInfo
-                id: appId
-                cred: appCred
-
-            auth = Ta.generateURL meta, appId
-            cb null, auth
+            user.saveAppInfo {id: appId, cred: appCred}, (err) =>
+                if err
+                    cb err
+                    return
+                auth = Ta.generateURL meta, appId
+                cb null, auth
 
 ###
 # Returns an auth object, i.e. {authUrl: '', state: ''}
@@ -173,23 +176,22 @@ exports.Get = (entity) ->
 #   cb -> function (err, userInstance) {}
 ###
 exports.LoadRegisteredUser = (entity, cb) ->
-    try
-        user = GetUser entity
-        appInfo = fs.readFileSync 'app/' + user.shortEntity + '.json', {encoding:'utf8'}
-        appInfo = JSON.parse appInfo
+    user = GetUser entity
+    database.tryFindUser user.shortEntity, (err, appInfo) =>
+        if err
+            cb err
+            return
+        if not appInfo
+            cb null, null
+            return
 
-        user.saveAppInfo appInfo
+        user.appInfo = appInfo
         Td entity, (maybeError, meta) =>
             if maybeError
                 cb maybeError, null
                 return
             user.saveMeta meta
             cb null, user
-
-    catch error
-        console.log 'Users.LoadRegisteredUser warning: ' + error
-        cb null, null
-
     true
 
 ###

@@ -3,6 +3,7 @@ start.sh
 stop.sh
 .pid
 diary.log
+diary.db
 
 *.js
 config.coffee
