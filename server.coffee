@@ -132,7 +132,7 @@ app.post '/subs/new', csrf, checkAuth, (req, res) ->
             if err2
                 res.send 500, err2
                 return
-            res.redirect '/subs/list'
+            res.redirect '/subs'
 
 # Get friend article
 app.get '/friend', csrf, checkAuth, (req, res) ->
