@@ -85,6 +85,12 @@ class User
         @meta = meta
         @meta
 
+    pushError: (msg) ->
+        @session.pushError msg
+
+    pushSuccess: (msg) ->
+        @session.pushSuccess msg
+
 ### STATIC METHODS ###
 # Cleans an entity name by removing http(s) and remaining slashes
 CleanEntity = (entity) ->

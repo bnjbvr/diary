@@ -22,7 +22,7 @@ block sub
 
                         p
                             label A title for your essay:
-                                if form.update && form.title
+                                if form.title
                                     input(type='text', name='title', placeholder='title', value=form.title)#title
                                 else
                                     input(type='text', name='title', placeholder='title')#title
@@ -31,7 +31,7 @@ block sub
                             textarea(name='summary', placeholder='Summary goes here', rows=5).field.span12#summary=form.summary
                         p
                             label Private
-                                if form.update && form.isPrivate
+                                if form.isPrivate
                                     input(type='checkbox', name='isPrivate', checked='checked')
                                 else
                                     input(type='checkbox', name='isPrivate')

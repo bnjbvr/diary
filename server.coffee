@@ -8,6 +8,9 @@ Users           = require './users'
 Backend         = require './backend'
 PublicClient    = require './public-client'
 
+# TODO
+# - add successes messages
+
 # Config of the app
 config = require './config'
 PORT = config.port
@@ -68,6 +71,13 @@ checkValidEntity = (entity) ->
         entity = entity.slice 0, entity.length-1
     return {entity: entity}
 
+showErrorPage = (user, res) ->
+    res.render 'loggedin',
+        flash: user.session.getFlash()
+
+stripScripts = (s) ->
+    s.replace /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ''
+
 # Get all's users route
 app.get '/my', csrf, checkAuth, (req, res) ->
     entity = req.signedCookies.entity
@@ -75,7 +85,8 @@ app.get '/my', csrf, checkAuth, (req, res) ->
 
     Backend.GetEssays user, (err, essays) =>
         if err
-            res.send 500, err
+            user.pushError err
+            showErrorPage user, res
             return
 
         user.session.cleanInfos()
@@ -94,8 +105,10 @@ app.get '/', csrf, checkAuth, (req, res) ->
 
     Backend.GetFeed user, (err, essays) =>
         if err
-            res.send 500, err
+            user.pushError err
+            showErrorPage user, res
             return
+
         user.session.cleanInfos()
         for e in essays
             e.readLink = '/friend?user=' + qs.escape(e.entity) + '&id=' + qs.escape e.id
@@ -110,8 +123,10 @@ app.get '/subs', csrf, checkAuth, (req, res) ->
 
     Backend.GetSubscriptions user, (err, subs) ->
         if err
-            res.send 500, err
+            user.pushError err
+            showErrorPage user, res
             return
+
         res.render 'subs_list',
             subs: subs
             flash: user.session.getFlash()
@@ -125,19 +140,20 @@ app.post '/subs/new', csrf, checkAuth, (req, res) ->
     subscription = req.param 'entity'
     validCheck = checkValidEntity subscription
     if validCheck.error
-        res.send 400, validCheck.error
+        user.pushError validCheck.error
+        res.redirect '/subs'
         return
-    subscription = validCheck.entity
 
+    subscription = validCheck.entity
     subTent = PublicClient.Get subscription, (err, _) =>
         if err
-            res.send 404, "The entity you want to subscribe to doesn't seem to exist: " + err # TODO better handle errors
+            user.pushError err
+            res.redirect '/subs'
             return
 
         Backend.AddSubscription user, subscription, (err2) =>
             if err2
-                res.send 500, err2
-                return
+                user.pushError err2
             res.redirect '/subs'
 
 # Get friend article
@@ -146,22 +162,22 @@ app.get '/friend', csrf, checkAuth, (req, res) ->
     entity = req.param 'user'
     user = Users.Get req.signedCookies.entity
 
-    if not id or not entity
-        res.send 500, 'Missing parameter.'
+    if not id
+        user.pushError 'Missing parameter: id'
+        showErrorPage user, res
         return
 
-    entity = qs.unescape entity
-    if not /^https?:\/\//ig.test entity
-        res.send 500, "The entity URL you've entered doesn't have a scheme (http or https)."
+    validCheck = checkValidEntity qs.unescape entity
+    if validCheck.error
+        user.pushError validCheck.error
+        showErrorPage user, res
         return
-
-    entity = entity.toLowerCase()
-    if entity[ entity.length-1 ] == '/'
-        entity = entity.slice 0, entity.length-1
+    entity = validCheck.entity
 
     Backend.GetFriendEssayById user, entity, id, (err, essay, profile) =>
         if err
-            res.send 500, 'Error when retrieving your subscription essay: ' + err
+            user.pushError err
+            showErrorPage user, res
             return
 
         res.render 'friend',
@@ -175,7 +191,10 @@ app.get '/friend', csrf, checkAuth, (req, res) ->
 # Print new post form
 app.get '/my/new', csrf, checkAuth, (req, res) ->
     user = Users.Get req.signedCookies.entity
-    user.session.cleanInfos()
+
+    if user.session.flash.error.length == 0
+        user.session.cleanInfos()
+
     res.render 'form',
         form: user.session.form
         flash: user.session.getFlash()
@@ -193,7 +212,7 @@ app.get '/edit/:id', csrf, checkAuth, (req, res) ->
 
     Backend.GetEssayById user, id, (err, e) ->
         if err
-            user.session.pushError 'Error when trying to retrieve post with id ' + id + ': ' + err
+            user.session.pushError err
             res.redirect '/my'
             return
 
@@ -219,47 +238,41 @@ app.get '/del/:id', csrf, checkAuth, (req, res) ->
     id = req.param 'id'
 
     if not id
-        user.session.pushError 'no id when deleting an essay'
+        user.pushError 'no id when deleting an essay'
         res.redirect '/my'
         return
 
     Backend.DeleteEssayById user, id, (err) ->
         if err
-            user.session.pushError err
+            user.ushError err
             res.redirect '/edit/' + id
         else
-            user.session.pushSuccess 'Deletion of essay was successful.'
+            user.pushSuccess 'Deletion of essay was successful.'
             res.redirect '/my'
 
 # Reader
-stripScripts = (s) ->
-    s.replace /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ''
-
 app.get '/read', (req, res) ->
     id = req.param 'id'
     entity = req.param 'user'
 
-    if not id or not entity
-        res.send 500, 'Missing parameter.'
+    if not id
+        res.send 400, 'Missing parameter: id'
         return
 
-    entity = qs.unescape entity
-    if not /^https?:\/\//ig.test entity
-        res.send 500, "The entity URL you've entered doesn't have a scheme (http or https)."
+    validCheck = checkValidEntity qs.unescape entity
+    if validCheck.error
+        res.send 400, validCheck.error
         return
-
-    entity = entity.toLowerCase()
-    if entity[ entity.length-1 ] == '/'
-        entity = entity.slice 0, entity.length-1
+    entity = validCheck.entity
 
     PublicClient.Get entity, (err, tent) ->
         if err
-            res.send 500, 'Error when creating the public client: ' + err
+            res.send 500, err
             return
 
         Backend.GetEssayById {tent:tent}, id, (err2, essay) ->
             if err2
-                res.send 500, 'Error when retrieving public post: ' + err2
+                res.send 500, err
                 return
 
             res.render 'read',
@@ -277,14 +290,17 @@ app.post '/new', checkAuth, (req, res) ->
     summary = req.param 'summary'
     content = req.param 'content'
     isPrivate = !! req.param 'isPrivate'
+    updateId = req.param 'update'
 
     if not content or content.length == 0
         user.session.form =
             title: title
             summary: summary
+            isPrivate: isPrivate
+            update: updateId
 
-        user.session.pushError 'Missing parameter: no content'
-        res.redirect '/my'
+        user.pushError 'Missing parameter: no content'
+        res.redirect '/my/new'
         return
 
     essay =
@@ -292,7 +308,6 @@ app.post '/new', checkAuth, (req, res) ->
         excerpt: summary || ''
         body: content
 
-    updateId = req.param 'update'
     if updateId
         vbING = 'updating'
         noun = 'Update'
@@ -302,9 +317,9 @@ app.post '/new', checkAuth, (req, res) ->
 
     cb = (err) =>
         if err
-            user.session.pushError 'An error happened when ' + vbING + ' post: ' + err
+            user.pushError 'An error happened when ' + vbING + ' post: ' + err
         else
-            user.session.pushSuccess noun + ' of your essay successful.'
+            user.pushSuccess noun + ' of your essay successful.'
             user.session.cleanInfos()
         res.redirect '/my'
 
