@@ -72,11 +72,6 @@ class User
             @tent = Tr.createClient @meta, @credentials
             cb null
 
-        if not PROD_MODE
-            # lazy implementation: saves user credentials in a file
-            filename = 'user/' + @shortEntity + '.json'
-            fs.writeFileSync filename, JSON.stringify cred
-
     isAuthenticated: () ->
         @credentials != null
 

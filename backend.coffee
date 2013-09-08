@@ -44,6 +44,7 @@ exports.GetFeed = (user, cb) ->
                 if not a.content or not a.content.title or a.content.title.length == 0
                     a.content.title = '(untitled)'
 
+                body.profiles ?= {}
                 a.profile = body.profiles[a.entity]
                 if not a.profile
                     a.profile = {name: ''}
@@ -65,6 +66,7 @@ exports.GetFriendEssayById = (user, entity, id, cb) ->
 
         essay = body.post
 
+        body.profiles ?= {}
         profile = body.profiles[entity] || {}
         profile.name ?= ''
         profile.bio ?= ''
@@ -103,6 +105,7 @@ exports.GetSubscriptions = (user, cb) ->
             if not subEntity
                 s.profile = {name: '?'}
                 return s
+            body.profiles ?= {}
             s.profile = body.profiles[subEntity] || {}
             s.profile.name ?= subEntity
             s
