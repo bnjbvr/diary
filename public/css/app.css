@@ -1,4 +1,54 @@
+@import url(http://fonts.googleapis.com/css?family=Raleway:400,200,100|Open+Sans:300,400);
+
 #central {
     margin: 0 auto;
     max-width: 750px;
+}
+
+.navbar-inner {
+    background-image: linear-gradient(to bottom, #4E4E4E, #424242) !important;
+    border: none;
+    border-radius: none;
+    -webkit-border-radius: none;
+}
+
+h1 {
+    font-family: raleway;
+    font-weight: 200;
+    }
+
+h2  {
+    font-family: raleway;
+    font-weight: 400;
+    }
+
+h3 {
+    font-family: raleway;
+    font-weight: 300;
+}
+
+.navbar {
+    font-family: raleway;
+}
+
+p {
+    font-family: open sans;
+    font-weight: 300;
+    font-size: 15px;
+}
+
+td {
+    font-family: open sans;
+    font-weight: 400 !important;
+    font-size: 15px;
+}
+
+li  {
+    font-family: open sans;
+    font-weight: 300;
+    font-size: 15px;
+}
+
+a.dropdown-toggle {
+    color: #DADADA;
 }
