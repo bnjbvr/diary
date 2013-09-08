@@ -1,4 +1,30 @@
+@import url(http://fonts.googleapis.com/css?family=Raleway:400,200,100|Open+Sans);
+
 #central {
     margin: 0 auto;
     max-width: 750px;
+}
+
+.navbar-inner {
+    background-image: linear-gradient(to bottom, #4E4E4E, #424242);
+    border: none;
+    border-radius: none;
+    -webkit-border-radius: none;
+}
+
+h1 {
+    font-family: raleway;
+    font-weight: 200;
+    }
+    
+.navbar {
+    font-family: raleway;
+}
+
+body {
+    font-family: open sans;
+}
+
+a.dropdown-toggle {
+    color: #DADADA;
 }
