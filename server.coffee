@@ -265,7 +265,9 @@ app.get '/del/:id', csrf, checkAuth, (req, res) ->
             res.redirect '/edit/' + id
         else
             user.pushSuccess 'Deletion of essay was successful.'
-            res.redirect '/my'
+            Database.MaybeDeleteFromFeed {entity: entity, id: id}, (err) =>
+                res.redirect '/my'
+
 
 # Reader
 app.get '/read', (req, res) ->
@@ -344,7 +346,8 @@ app.post '/new', checkAuth, (req, res) ->
                         user.pushError 'Error when adding the post to the global feed: ' + err2
                     res.redirect '/my'
             else
-                res.redirect '/my'
+                Database.MaybeDeleteFromFeed post, (_) =>
+                    res.redirect '/my'
 
     if updateId
         Backend.UpdateEssay user, updateId, essay, isPrivate, cb

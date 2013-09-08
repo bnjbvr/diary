@@ -57,3 +57,18 @@ exports.GetGlobalFeed = (cb) ->
             cb err, null
             return
         cb null, posts
+
+exports.MaybeDeleteFromFeed = (post, cb) ->
+    db.get "SELECT * FROM feed WHERE entity = ? and id = ?", post.entity, post.id, (err, found) =>
+        if err
+            console.error 'Database.MaybeDeleteFromFeed: ' + err
+            cb err
+            return
+
+        if found
+            db.run "DELETE FROM feed WHERE entity = ? and id = ?", post.entity, post.id, (err2) =>
+                if err2
+                    console.error 'Database.MaybeDeleteFromFeed, delete: ' + err2
+                cb err2
+        else
+            cb null
