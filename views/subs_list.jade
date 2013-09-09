@@ -18,11 +18,24 @@ block sub
                 tr
                     th Name
             tbody
-                for e in subs
+                for s in subscriptions
                     tr
                         td
-                            if e.pageLink
-                                a(href=e.pageLink)=e.profile.name
+                            if s.pageLink
+                                a(href=s.pageLink)=s.profile.name
                             else
-                                e.profile.name
+                                s.profile.name
+        h3 Your subscribers
+        table(class="table table-striped")
+            thead
+                tr
+                    th Name
+            tbody
+                for s in subscribers
+                    tr
+                        td
+                            if s.pageLink
+                                a(href=s.pageLink)=s.profile.name
+                            else
+                                s.profile.name
 

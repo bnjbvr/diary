@@ -148,13 +148,23 @@ app.get '/subs', csrf, checkAuth, (req, res) ->
             showErrorPage user, res
             return
 
-        subs = subs.map (s) ->
+        subscriptions = subs.map (s) ->
             s.pageLink = makePageLink s.profile.entity
             s
 
-        res.render 'subs_list',
-            subs: subs
-            flash: user.session.getFlash()
+        Backend.GetSubscribers user, (err2, subs2) ->
+            if err2
+                user.pushError err2
+                subscribers = []
+            else
+                subscribers = subs2.map (s) ->
+                    s.pageLink = makePageLink s.entity
+                    s
+
+            res.render 'subs_list',
+                subscribers: subscribers
+                subscriptions: subscriptions
+                flash: user.session.getFlash()
 
 # Adds a subscription
 app.post '/subs/new', csrf, checkAuth, (req, res) ->

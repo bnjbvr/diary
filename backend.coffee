@@ -110,8 +110,8 @@ exports.AddSubscription = (user, entity, cb) ->
 exports.GetSubscriptions = (user, cb) ->
     tcb = (err, headers, body) =>
         if err
-            console.error 'Backend.SubscribeFriend: error for ' + user.entity + ' when subscribing on ' + entity + ': ' + err
-            cb 'Error when subscribing to an entity: ' + err
+            console.error 'Backend.GetSubscriptions: for ' + user.entity + '\n' + err
+            cb 'Error when retrieving your subscriptions: ' + err
             return
 
         subs = body.posts
@@ -128,7 +128,27 @@ exports.GetSubscriptions = (user, cb) ->
             s
         cb null, subs
 
-    user.tent.query({ profiles: 'mentions' }, tcb).types(SUBSCRIPTION_TYPE + ESSAY_TYPE)
+    user.tent.query({ profiles: 'mentions' }, tcb).types(SUBSCRIPTION_TYPE + ESSAY_TYPE).entities(user.entity)
+
+
+exports.GetSubscribers = (user, cb) ->
+    tcb = (err, headers, body) =>
+        if err
+            console.error 'Backend.GetSubscribers: for ' + user.entity + '\n' + err
+            cb 'Error when retrieving your subscribers: ' + err
+            return
+
+        subs = body.posts
+        subs = subs.map (s) =>
+            subEntity = s.entity
+            body.profiles ?= {}
+            s.profile = body.profiles[subEntity] || {}
+            s.profile.name ?= subEntity
+            s
+        cb null, subs
+
+    user.tent.query({ profiles: 'entity' }, tcb).types(SUBSCRIPTION_TYPE + ESSAY_TYPE).mentions(user.entity)
+
 
 GetEssayById = exports.GetEssayById = (user, id, cb) ->
     tcb = (err, headers, body) =>
