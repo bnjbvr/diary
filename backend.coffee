@@ -4,6 +4,8 @@ qs      = require 'querystring'
 ESSAY_TYPE = 'https://tent.io/types/essay/v0#'
 SUBSCRIPTION_TYPE = 'https://tent.io/types/subscription/v0#'
 
+ESSAY_SUB = 'https://tent.io/types/subscription/v0#https://tent.io/types/essay/v0'
+
 ###
 # Retrieves all essays of the user.
 #
@@ -96,6 +98,7 @@ exports.AddSubscription = (user, entity, cb) ->
     tcb = (err, headers, body) =>
         if err
             console.error 'Backend.SubscribeFriend: error for ' + user.entity + ' when subscribing on ' + entity + ': ' + err
+
             cb 'Error when subscribing to an entity: ' + err
             return
         cb null
@@ -103,7 +106,7 @@ exports.AddSubscription = (user, entity, cb) ->
     subscription =
         type: ESSAY_TYPE
 
-    user.tent.create(SUBSCRIPTION_TYPE + ESSAY_TYPE, tcb)
+    user.tent.create(ESSAY_SUB, tcb)
              .content(subscription)
              .mentions(entity)
 
@@ -128,7 +131,7 @@ exports.GetSubscriptions = (user, cb) ->
             s
         cb null, subs
 
-    user.tent.query({ profiles: 'mentions' }, tcb).types(SUBSCRIPTION_TYPE + ESSAY_TYPE).entities(user.entity)
+    user.tent.query({ profiles: 'mentions' }, tcb).types(ESSAY_SUB).entities(user.entity)
 
 
 exports.GetSubscribers = (user, cb) ->
@@ -147,7 +150,7 @@ exports.GetSubscribers = (user, cb) ->
             s
         cb null, subs
 
-    user.tent.query({ profiles: 'entity' }, tcb).types(SUBSCRIPTION_TYPE + ESSAY_TYPE).mentions(user.entity)
+    user.tent.query({ profiles: 'entity' }, tcb).types(ESSAY_SUB).mentions(user.entity)
 
 
 GetEssayById = exports.GetEssayById = (user, id, cb) ->
