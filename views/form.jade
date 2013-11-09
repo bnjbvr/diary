@@ -10,6 +10,8 @@ block sub
                 li.active
                     a(href='#tab-compose', data-toggle='tab') Compose
                 li
+                    a(href='#tab-medium', data-toggle='tab') WYSIWIG
+                li
                     a(href='#tab-preview', data-toggle='tab') Preview
             .tab-content
                 .tab-pane.active#tab-compose
@@ -46,13 +48,17 @@ block sub
 
                 .tab-pane#tab-preview
                     #preview
+                .tab-pane#tab-medium
+                    .field.span12#mComposer=form.content
 
+    script(src='/js/medium-editor.js')
     script.
         $(document).ready(function() {
             var _title = $('#title');
             var _summary = $('#summary');
             var _preview = $('#preview');
             var _composer = $('#composer');
+            var _mComposer = $('#mComposer');
 
             function stripScripts(txt) {
                 return txt.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
@@ -66,10 +72,34 @@ block sub
                 _preview.html(html);
             }
 
-            _composer.change(updatePreview);
             _summary.change(updatePreview);
             _title.change(updatePreview);
 
+            var mediumEditor = new MediumEditor('#mComposer', {
+                placeholder: 'Essay goes here'
+            });
+
+            // Keep mComposer in sync with composer and preview
+            // mComposer -> composer / preview
+            function syncMediumComposer(x) {
+                var mediumContent = _mComposer.html();
+                _composer.val(mediumContent);
+                updatePreview();
+            }
+            _mComposer.keyup(syncMediumComposer);
+            _mComposer.blur(syncMediumComposer);
+
+            // composer -> mComposer
+            function syncComposerMedium() {
+                _mComposer.html(_composer.val());
+            }
+
+            _composer.change(function() {
+                syncComposerMedium();
+                updatePreview();
+            });
+
+            syncComposerMedium();
             updatePreview();
         });
 
