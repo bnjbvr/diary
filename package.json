@@ -1,6 +1,6 @@
 {
   "name": "diary",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "An essay app based on the tent protocol.",
   "main": "server.coffee",
   "dependencies": {
@@ -13,7 +13,7 @@
   },
   "devDependencies": {},
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "coffee diary.coffee"
   },
   "repository": {
     "type": "git",

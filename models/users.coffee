@@ -3,9 +3,8 @@ Tr = require 'tent-request'
 Td = require 'tent-discover'
 fs = require 'fs'
 
-config = require './config'
+config = require '../config'
 database = require './database'
-PROD_MODE = config.prod
 
 class UserSession
     constructor: () ->

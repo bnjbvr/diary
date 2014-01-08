@@ -1,5 +1,5 @@
 sqlite = require 'sqlite3'
-config = require './config'
+config = require '../config'
 
 if config.prod
     db = new sqlite.Database './diary.db'
