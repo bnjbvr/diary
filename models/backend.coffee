@@ -29,7 +29,7 @@ exports.GetEssays = (user, cb) ->
 
         cb null, essays
 
-    user.tent.query(tcb).types(ESSAY_TYPE).entities(user.entity)
+    user.tent.query({types: ESSAY_TYPE, entities: user.entity}, tcb)
 
 
 exports.GetFeed = (user, cb) ->
@@ -55,7 +55,7 @@ exports.GetFeed = (user, cb) ->
 
         cb null, essays
 
-    user.tent.query( {profiles: 'entity'}, tcb ).types(ESSAY_TYPE)
+    user.tent.query({types: ESSAY_TYPE}, {profiles: 'entity'}, tcb )
     # TODO maybe factorize this with getessays
 
 exports.GetAllByEntity = (user, entity, cb) ->
@@ -73,7 +73,7 @@ exports.GetAllByEntity = (user, entity, cb) ->
         profile = body.profiles[entity] || {name: entity}
         cb null, essays, profile
 
-    user.tent.query( {profiles: 'entity'}, tcb ).entities(entity).types(ESSAY_TYPE)
+    user.tent.query({entities: entity, types: ESSAY_TYPE}, {profiles: 'entity'}, tcb )
 
 exports.GetFriendEssayById = (user, entity, id, cb) ->
     tcb = (err, headers, body) =>
@@ -106,9 +106,7 @@ exports.AddSubscription = (user, entity, cb) ->
     subscription =
         type: ESSAY_TYPE
 
-    user.tent.create(ESSAY_SUB, tcb)
-             .content(subscription)
-             .mentions(entity)
+    user.tent.create(ESSAY_SUB, {mentions: entity}, subscription, tcb)
 
 exports.GetSubscriptions = (user, cb) ->
     tcb = (err, headers, body) =>
@@ -131,7 +129,7 @@ exports.GetSubscriptions = (user, cb) ->
             s
         cb null, subs
 
-    user.tent.query({ profiles: 'mentions' }, tcb).types(ESSAY_SUB).entities(user.entity)
+    user.tent.query({types: ESSAY_SUB, entities: user.entity}, { profiles: 'mentions' }, tcb)
 
 
 exports.GetSubscribers = (user, cb) ->
@@ -150,8 +148,7 @@ exports.GetSubscribers = (user, cb) ->
             s
         cb null, subs
 
-    user.tent.query({ profiles: 'entity' }, tcb).types(ESSAY_SUB).mentions(user.entity)
-
+    user.tent.query({types: ESSAY_SUB, mentions: user.entity}, { profiles: 'entity' }, tcb)
 
 GetEssayById = exports.GetEssayById = (user, id, cb) ->
     tcb = (err, headers, body) =>
@@ -187,10 +184,7 @@ exports.UpdateEssay = (user, id, essay, isPrivate, cb) ->
                 return
             cb null, body.post
 
-        user.tent.update(id, formerEssay.version.id, tcb)
-            .type(ESSAY_TYPE)
-            .content(essay)
-            .permissions(!isPrivate)
+        user.tent.update(id, formerEssay.version.id, ESSAY_TYPE, {permissions: !isPrivate}, essay, tcb)
 
 exports.CreateEssay = (user, essay, isPrivate, cb) ->
     tcb = (err, headers, body) =>
@@ -200,7 +194,4 @@ exports.CreateEssay = (user, essay, isPrivate, cb) ->
             return
         cb null, body.post
 
-    user.tent.create(ESSAY_TYPE, tcb)
-        .publishedAt( +new Date() )
-        .content(essay)
-        .permissions(!isPrivate)
+    user.tent.create(ESSAY_TYPE, {publishedAt: +new Date(), permissions: !isPrivate}, essay, tcb)

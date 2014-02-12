@@ -65,10 +65,10 @@ class User
                     return
 
                 meta = @saveMeta meta
-                @tent = Tr.createClient meta, @credentials
+                @tent = Tr meta, @credentials
                 cb null
         else
-            @tent = Tr.createClient @meta, @credentials
+            @tent = Tr @meta, @credentials
             cb null
 
     isAuthenticated: () ->

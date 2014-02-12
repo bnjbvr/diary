@@ -13,7 +13,7 @@ exports.Get = (entity, cb) ->
             console.error 'PublicClient.make callback error: ' + maybeErr
             cb maybeErr
             return
-        cacheReaders[entity] = Tr.createClient meta.post.content
+        cacheReaders[entity] = Tr meta.post.content
         cb null, cacheReaders[entity]
 
     true
