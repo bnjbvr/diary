@@ -4,11 +4,12 @@ Diary is an open-source [tent](https://tent.io) application designed to manage a
 
 # Installation
 
-The following instructions will guide you throughout the installation procedure on __Ubuntu__.
-
 ## Prerequisites
 
-First things first, let's install a few dependencies for Diary to run properly.
+First things first, let's install a few dependencies for Diary to run properly. Feel free to ignore this part if you
+already have node, npm and coffee on your machine.
+
+The following instructions will guide you throughout the installation procedure on __Ubuntu__.
 
 1. NodeJS + NPM
 
@@ -35,23 +36,23 @@ We're now ready to download and run Diary itself.
     ```
     git clone https://github.com/BenjBouv/diary.git
     ```
-    
+
 2. Move into the folder that you just cloned the source in, and run the following command to install all the necessary NPM packages.
 
     ```
     sudo npm install
     ```
-    
+
 3. Rename the sample config file `config.coffee.example` into `config.coffee`. The default port for diary to run on is _1337_, but feel free to edit this config file to change this setting.
 
     ```
     mv config.coffee.example config.coffee
     ```
-    
+
 4. Everything's now ready for us to run the app.
 
     ```
-    coffee server.coffee
+    coffee diary.coffee
     ```
 
 # License
