@@ -8,7 +8,7 @@
     "jade": "~0.35.0",
     "tent-auth": ">=0.2.3",
     "tent-discover": ">=0.2.1",
-    "tent-request": ">=0.3.0",
+    "tent-request": ">=0.4.3",
     "sqlite3": ">=2.1.15"
   },
   "devDependencies": {},
